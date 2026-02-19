@@ -115,13 +115,21 @@ function toDbConnection(row: Record<string, unknown>): KoifesConnection {
 }
 
 function toRowUser(u: KoifesUser): Record<string, unknown> {
+  const esteem = u.esteem === "" || u.esteem == null || u.esteem === undefined
+    ? 5
+    : (Number(u.esteem) || 5);
+  const resistance = u.resistance === "" || u.resistance == null || u.resistance === undefined
+    ? 5
+    : (Number(u.resistance) || 5);
+  const height = u.height === "" || !u.height ? null : u.height;
+
   return {
     id: u.id,
     code: u.code,
     nickname: u.nickname,
     gender: u.gender,
     age: u.age,
-    height: u.height,
+    height,
     job: u.job,
     family: u.family,
     income: u.income,
@@ -130,8 +138,8 @@ function toRowUser(u: KoifesUser): Record<string, unknown> {
     hobbies: u.hobbies || [],
     values: u.values || [],
     event_exp: u.eventExp,
-    esteem: u.esteem ?? 5,
-    resistance: u.resistance ?? 5,
+    esteem,
+    resistance,
     invest: u.invest,
     weakness: u.weakness,
     personality: u.personality,
