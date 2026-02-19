@@ -120,18 +120,18 @@ export default function RegisterPage() {
       createdAt: new Date().toISOString(),
     };
     try {
-      await addUser(newUser);
-      console.log("[register] Supabase への保存成功");
+      const newId = await addUser(newUser);
+      console.log("[register] Supabase への保存成功, id:", newId);
 
       // 保存確認：読み直してユーザーが存在するか確認
       const db = await load();
-      const saved = db.users.find((u) => u.id === newUser.id);
+      const saved = db.users.find((u) => u.id === newId);
       if (!saved) {
         console.warn("[register] 保存後の確認でユーザーが見つかりません。少し待ってからリダイレクトします。");
         await new Promise((r) => setTimeout(r, 500));
       }
 
-      saveSession(newUser.id);
+      saveSession(newId);
       console.log("[register] セッション保存完了, redirect to /app");
       router.push("/app?screen=card");
       router.refresh();

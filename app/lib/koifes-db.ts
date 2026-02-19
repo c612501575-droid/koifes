@@ -191,14 +191,17 @@ export async function saveUsers(users: KoifesUser[]): Promise<void> {
   }
 }
 
-export async function addUser(user: KoifesUser): Promise<void> {
+export async function addUser(user: KoifesUser): Promise<string> {
   const row = toRowUser({ ...user, createdAt: new Date().toISOString() });
-  const { data, error } = await supabase.from("koifes_users").insert(row).select();
+  delete (row as Record<string, unknown>).id;
+  const { data, error } = await supabase.from("koifes_users").insert(row).select("id").single();
   if (error) {
     console.error("[koifes-db] addUser failed:", error.message, error.details, error.hint);
     throw new Error(`ユーザー登録に失敗しました: ${error.message}`);
   }
-  console.log("[koifes-db] addUser success:", data?.[0]?.id || user.id);
+  const newId = (data?.id as string) ?? "";
+  console.log("[koifes-db] addUser success:", newId);
+  return newId;
 }
 
 export async function updateUser(user: KoifesUser): Promise<void> {
@@ -212,14 +215,12 @@ export async function updateUser(user: KoifesUser): Promise<void> {
 
 export async function addRating(rating: KoifesRating): Promise<void> {
   const { error } = await supabase.from("koifes_ratings").insert({
-    id: rating.id,
     from_user_id: rating.from,
     to_user_id: rating.to,
     impression: rating.impression,
     ease: rating.ease,
     again: rating.again,
     overall: rating.overall,
-    created_at: rating.createdAt,
   });
   if (error) {
     console.error("[koifes-db] addRating failed:", error.message, error.details);
@@ -229,10 +230,8 @@ export async function addRating(rating: KoifesRating): Promise<void> {
 
 export async function addConnection(conn: KoifesConnection): Promise<void> {
   const { error } = await supabase.from("koifes_connections").insert({
-    id: conn.id,
     from_user_id: conn.from,
     to_user_id: conn.to,
-    created_at: conn.createdAt,
   });
   if (error) {
     // 重複時は無視（UNIQUE制約違反）
