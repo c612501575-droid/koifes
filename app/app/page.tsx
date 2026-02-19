@@ -128,19 +128,18 @@ function AppPageContent() {
   if (screen === "home") {
     const conns = db.connections.filter((c) => c.from === user.id || c.to === user.id).length;
     const received = db.ratings.filter((r) => r.to === user.id);
-    const avgScore = received.length > 0 ? (received.reduce((a, r) => a + r.overall, 0) / received.length).toFixed(1) : "—";
     return (
       <div style={{ minHeight: "100vh", background: "#000", paddingBottom: 80, color: "#fff" }}>
         <div style={{ padding: "48px 24px 32px", maxWidth: 480, margin: "0 auto" }}>
-          <p style={{ fontSize: 10, letterSpacing: "0.35em", color: "#666", marginBottom: 12 }}>WELCOME BACK</p>
-          <h1 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 26, fontWeight: 300, lineHeight: 1.5 }}>
-            {user.nickname}<span style={{ fontSize: 16, color: "#999", fontWeight: 200 }}>さん</span>
+          <p style={{ fontSize: 11, letterSpacing: "0.35em", color: "#666", marginBottom: 12 }}>WELCOME BACK</p>
+          <h1 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 27, fontWeight: 300, lineHeight: 1.5 }}>
+            {user.nickname}<span style={{ fontSize: 17, color: "#999", fontWeight: 200 }}>さん</span>
           </h1>
         </div>
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(3,1fr)",
+            gridTemplateColumns: "repeat(2,1fr)",
             gap: 1,
             background: faintLine2,
             margin: "0 24px 32px",
@@ -152,11 +151,10 @@ function AppPageContent() {
           {[
             { num: conns, label: "TALKS" },
             { num: received.length, label: "LIKES", isGold: true },
-            { num: avgScore, label: "SCORE" },
           ].map((s, i) => (
             <div key={i} style={{ background: "#000", padding: "22px 16px", textAlign: "center" }}>
-              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 34, fontWeight: 300, color: s.isGold ? gold : "#fff", lineHeight: 1, marginBottom: 10 }}>{s.num}</div>
-              <div style={{ fontSize: 8, letterSpacing: "0.25em", color: "#666" }}>{s.label}</div>
+              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 35, fontWeight: 300, color: s.isGold ? gold : "#fff", lineHeight: 1, marginBottom: 10 }}>{s.num}</div>
+              <div style={{ fontSize: 9, letterSpacing: "0.25em", color: "#666" }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -166,8 +164,8 @@ function AppPageContent() {
             style={{ width: "100%", background: "#fff", border: "none", padding: "28px 24px", cursor: "pointer", textAlign: "left", marginBottom: 12 }}
           >
             <span style={{ fontSize: 26, display: "block", marginBottom: 14, color: "#000" }}>◈</span>
-            <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 17, fontWeight: 300, color: "#000", marginBottom: 6 }}>マイカード</div>
-            <div style={{ fontSize: 11, color: "#666", lineHeight: 1.8 }}>QRコードを表示して相手とつながる</div>
+            <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 18, fontWeight: 300, color: "#000", marginBottom: 6 }}>マイカード</div>
+            <div style={{ fontSize: 12, color: "#666", lineHeight: 1.8 }}>QRコードを表示して相手とつながる</div>
           </button>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {[
@@ -180,8 +178,8 @@ function AppPageContent() {
                 style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.08)", padding: "28px 20px", cursor: "pointer", textAlign: "left" }}
               >
                 <span style={{ fontSize: 24, display: "block", marginBottom: 14, color: gold }}>{a.icon}</span>
-                <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 15, fontWeight: 300, color: "#fff", marginBottom: 6 }}>{a.title}</div>
-                <div style={{ fontSize: 10, color: "#666", lineHeight: 1.8, whiteSpace: "pre-line" }}>{a.desc}</div>
+                <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 16, fontWeight: 300, color: "#fff", marginBottom: 6 }}>{a.title}</div>
+                <div style={{ fontSize: 11, color: "#666", lineHeight: 1.8, whiteSpace: "pre-line" }}>{a.desc}</div>
               </button>
             ))}
           </div>

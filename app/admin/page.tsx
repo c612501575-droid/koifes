@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { load } from "@/app/lib/koifes-db";
+import { checkAdminAuth, clearAdminAuth } from "@/app/admin/login/page";
 import { gold } from "@/app/lib/koifes-constants";
 import { Header } from "@/app/components/koifes/ui";
 import {
@@ -18,15 +19,25 @@ export default function AdminPage() {
   const [db, setDb] = useState({ users: [] as Awaited<ReturnType<typeof load>>["users"], ratings: [] as Awaited<ReturnType<typeof load>>["ratings"], connections: [] as Awaited<ReturnType<typeof load>>["connections"] });
   const [tab, setTab] = useState("overview");
   const [loading, setLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
+    if (!checkAdminAuth()) {
+      router.replace("/admin/login");
+      return;
+    }
+    setAuthChecked(true);
+  }, [router]);
+
+  useEffect(() => {
+    if (!authChecked) return;
     load().then((d) => {
       setDb(d);
       setLoading(false);
     });
-  }, []);
+  }, [authChecked]);
 
-  if (loading) {
+  if (!authChecked || loading) {
     return (
       <div
         style={{
@@ -70,7 +81,7 @@ export default function AdminPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#000", paddingBottom: 24, color: "#fff" }}>
-      <Header title="Admin" onLeft={() => router.push("/login")} />
+      <Header title="Admin" onLeft={() => { clearAdminAuth(); router.push("/admin/login"); }} />
       <div style={{ display: "flex", gap: 1, margin: "16px 16px", background: "rgba(255,255,255,0.06)", padding: 2 }}>
         {Object.entries(tabs).map(([k, v]) => (
           <button

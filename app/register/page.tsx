@@ -147,8 +147,8 @@ export default function RegisterPage() {
   const steps = [
     // Step 1
     <div key={0}>
-      <p style={{ fontSize: 10, letterSpacing: "0.4em", color: "#c8a96e", marginBottom: 8 }}>STEP 01</p>
-      <h2 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 22, fontWeight: 300, lineHeight: 1.6, marginBottom: 32 }}>基本情報を<br />入力してください</h2>
+      <p style={{ fontSize: 11, letterSpacing: "0.4em", color: "#c8a96e", marginBottom: 8 }}>STEP 01</p>
+      <h2 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 23, fontWeight: 300, lineHeight: 1.6, marginBottom: 32 }}>基本情報を<br />入力してください</h2>
       <div style={{ marginBottom: 32 }}><FormLabel required>ニックネーム</FormLabel><FormInput value={form.nickname} onChange={(v) => set("nickname", v)} placeholder="例：さくら" maxLength={10} /></div>
       <div style={{ marginBottom: 32 }}><FormLabel required>性別</FormLabel><ChipGroup options={["男性", "女性"]} value={form.gender} onChange={(v) => set("gender", v as string)} /></div>
       <div style={{ marginBottom: 32 }}><FormLabel required>年齢</FormLabel><ChipGroup options={AGES} value={form.age} onChange={(v) => set("age", v as string)} /></div>
@@ -158,8 +158,8 @@ export default function RegisterPage() {
     </div>,
     // Step 2
     <div key={1}>
-      <p style={{ fontSize: 10, letterSpacing: "0.4em", color: "#c8a96e", marginBottom: 8 }}>STEP 02</p>
-      <h2 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 22, fontWeight: 300, lineHeight: 1.6, marginBottom: 32 }}>価値観・希望を<br />教えてください</h2>
+      <p style={{ fontSize: 11, letterSpacing: "0.4em", color: "#c8a96e", marginBottom: 8 }}>STEP 02</p>
+      <h2 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 23, fontWeight: 300, lineHeight: 1.6, marginBottom: 32 }}>価値観・希望を<br />教えてください</h2>
       <div style={{ marginBottom: 32 }}><FormLabel>年収帯</FormLabel><ChipGroup options={INCOME} value={form.income} onChange={(v) => set("income", v as string)} /></div>
       <div style={{ marginBottom: 32 }}><FormLabel required>結婚への希望</FormLabel><ChipGroup options={MARRIAGE} value={form.marriage} onChange={(v) => set("marriage", v as string)} accent /></div>
       <div style={{ marginBottom: 32 }}><FormLabel required>子供の希望</FormLabel><ChipGroup options={CHILDREN} value={form.children} onChange={(v) => set("children", v as string)} /></div>
@@ -169,8 +169,8 @@ export default function RegisterPage() {
     </div>,
     // Step 3
     <div key={2}>
-      <p style={{ fontSize: 10, letterSpacing: "0.4em", color: "#c8a96e", marginBottom: 8 }}>STEP 03</p>
-      <h2 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 22, fontWeight: 300, lineHeight: 1.6, marginBottom: 32 }}>自己スコアを<br />入力してください</h2>
+      <p style={{ fontSize: 11, letterSpacing: "0.4em", color: "#c8a96e", marginBottom: 8 }}>STEP 03</p>
+      <h2 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 23, fontWeight: 300, lineHeight: 1.6, marginBottom: 32 }}>自己スコアを<br />入力してください</h2>
       <div style={{ marginBottom: 32 }}><FormLabel>自己肯定感スコア</FormLabel><SliderInput subLeft="低い" subRight="高い" value={form.esteem} onChange={(v) => set("esteem", v)} /></div>
       <div style={{ marginBottom: 32 }}><FormLabel>異性への抵抗感</FormLabel><SliderInput subLeft="全くない" subRight="かなりある" value={form.resistance} onChange={(v) => set("resistance", v)} /></div>
       <div style={{ marginBottom: 32 }}><FormLabel>自己投資額（月）</FormLabel><ChipGroup options={INVEST} value={form.invest} onChange={(v) => set("invest", v as string)} /></div>
@@ -179,10 +179,10 @@ export default function RegisterPage() {
     </div>,
     // Step 4
     <div key={3}>
-      <p style={{ fontSize: 10, letterSpacing: "0.4em", color: "#c8a96e", marginBottom: 8 }}>STEP 04</p>
-      <h2 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 22, fontWeight: 300, lineHeight: 1.6, marginBottom: 32 }}>自分磨きと<br />意識の変化について</h2>
+      <p style={{ fontSize: 11, letterSpacing: "0.4em", color: "#c8a96e", marginBottom: 8 }}>STEP 04</p>
+      <h2 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 23, fontWeight: 300, lineHeight: 1.6, marginBottom: 32 }}>自分磨きと<br />意識の変化について</h2>
       <InfoBox>⚠ このデータは徳島市の少子化対策に匿名統計として活用されます</InfoBox>
-      <div style={{ marginBottom: 32 }}><FormLabel required>本日のイベントに向けて「自分磨き」を行いましたか？</FormLabel><p style={{ fontSize: 10, color: "#666", marginBottom: 12 }}>美容院・ジム・服の新調・スキンケアなど</p><ChipGroup options={["はい", "いいえ"]} value={form.selfImprovement} onChange={(v) => set("selfImprovement", v as string)} /></div>
+      <div style={{ marginBottom: 32 }}><FormLabel required>本日のイベントに向けて「自分磨き」を行いましたか？</FormLabel><p style={{ fontSize: 11, color: "#666", marginBottom: 12 }}>美容院・ジム・服の新調・スキンケアなど</p><ChipGroup options={["はい", "いいえ"]} value={form.selfImprovement} onChange={(v) => set("selfImprovement", v as string)} /></div>
       {form.selfImprovement === "はい" && (
         <div style={{ marginBottom: 32 }}><FormLabel>外見を変えたことで、自分に自信が持てましたか？</FormLabel><ChipGroup options={CONFIDENCE_5} value={form.improvementConfidence} onChange={(v) => set("improvementConfidence", v as string)} /></div>
       )}
@@ -190,13 +190,13 @@ export default function RegisterPage() {
     </div>,
     // Step 5
     <div key={4}>
-      <p style={{ fontSize: 10, letterSpacing: "0.4em", color: "#c8a96e", marginBottom: 8 }}>STEP 05</p>
-      <h2 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 22, fontWeight: 300, lineHeight: 1.6, marginBottom: 32 }}>徳島での生活と<br />将来について</h2>
+      <p style={{ fontSize: 11, letterSpacing: "0.4em", color: "#c8a96e", marginBottom: 8 }}>STEP 05</p>
+      <h2 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 23, fontWeight: 300, lineHeight: 1.6, marginBottom: 32 }}>徳島での生活と<br />将来について</h2>
       <div style={{ marginBottom: 32 }}><FormLabel required>良いパートナーがいれば、今後も徳島に住み続けたいですか？</FormLabel><ChipGroup options={["ぜひ住みたい", "条件次第で", "どちらとも", "県外に出たい"]} value={form.stayTokushima} onChange={(v) => set("stayTokushima", v as string)} accent /></div>
       <div style={{ marginBottom: 32 }}><FormLabel>県外へ出たい（出た）最大の理由</FormLabel><ChipGroup options={LEAVE_REASONS} value={form.leaveReason} onChange={(v) => set("leaveReason", v as string)} /></div>
       {isTeen && (
         <div style={{ marginBottom: 32, background: "rgba(200,169,110,0.05)", border: `1px solid ${goldBorder}`, padding: 20 }}>
-          <p style={{ fontSize: 9, letterSpacing: "0.15em", color: "#c8a96e", marginBottom: 12 }}>10代の方への質問</p>
+          <p style={{ fontSize: 10, letterSpacing: "0.15em", color: "#c8a96e", marginBottom: 12 }}>10代の方への質問</p>
           <FormLabel>徳島に「これがあれば残る」という要素は？（複数可）</FormLabel>
           <ChipGroup options={STAY_CONDITIONS} value={form.stayConditions} onChange={(v) => set("stayConditions", v as string[])} multi accent small />
         </div>
@@ -212,7 +212,7 @@ export default function RegisterPage() {
       <Header
         title="Registration"
         onLeft={step > 0 ? () => setStep((s) => s - 1) : () => router.push("/login")}
-        right={<span style={{ fontSize: 10, letterSpacing: "0.2em", color: "#666" }}>{step + 1} / {TOTAL_STEPS}</span>}
+        right={<span style={{ fontSize: 11, letterSpacing: "0.2em", color: "#666" }}>{step + 1} / {TOTAL_STEPS}</span>}
       />
       <Progress step={step + 1} total={TOTAL_STEPS} />
       <div style={{ flex: 1, padding: "32px 24px 40px", maxWidth: 480, margin: "0 auto", width: "100%", overflowY: "auto" }}>{steps[step]}</div>

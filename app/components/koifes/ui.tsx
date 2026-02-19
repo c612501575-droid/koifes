@@ -24,7 +24,7 @@ export function Chip({
         border: `1px solid ${selected ? (accent ? gold : "#fff") : "rgba(255,255,255,0.15)"}`,
         color: selected ? "#000" : "rgba(255,255,255,0.55)",
         fontFamily: "'Noto Sans JP', sans-serif",
-        fontSize: small ? 11 : 12,
+        fontSize: small ? 12 : 13,
         fontWeight: selected ? 400 : 300,
         padding: small ? "7px 14px" : "10px 18px",
         cursor: "pointer",
@@ -103,8 +103,8 @@ export function SliderInput({
           marginBottom: 10,
         }}
       >
-        <span style={{ fontSize: 10, color: "#666" }}>{subLeft}</span>
-        <span style={{ fontSize: 10, color: "#666" }}>{subRight}</span>
+        <span style={{ fontSize: 11, color: "#666" }}>{subLeft}</span>
+        <span style={{ fontSize: 11, color: "#666" }}>{subRight}</span>
       </div>
       <input
         type="range"
@@ -143,7 +143,7 @@ export function FormLabel({
     <label
       style={{
         display: "block",
-        fontSize: 11,
+        fontSize: 12,
         letterSpacing: "0.2em",
         color: "#999",
         marginBottom: 12,
@@ -185,7 +185,7 @@ export function FormInput({
         borderBottom: `1px solid ${focused ? gold : "rgba(255,255,255,0.18)"}`,
         color: "#fff",
         fontFamily: "'Noto Sans JP', sans-serif",
-        fontSize: 18,
+        fontSize: 19,
         fontWeight: 300,
         padding: "12px 0",
         outline: "none",
@@ -218,7 +218,7 @@ export function BtnPrimary({
         color: disabled ? "#555" : "#000",
         border: disabled ? "1px solid #333" : "none",
         fontFamily: "'Noto Sans JP', sans-serif",
-        fontSize: 13,
+        fontSize: 14,
         fontWeight: 400,
         letterSpacing: "0.3em",
         padding: 18,
@@ -250,7 +250,7 @@ export function BtnSecondary({
         color: h ? "#fff" : "#999",
         border: `1px solid ${h ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.12)"}`,
         fontFamily: "'Noto Sans JP', sans-serif",
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: 300,
         letterSpacing: "0.2em",
         padding: 14,
@@ -492,8 +492,8 @@ export function InfoBox({ children }: { children: React.ReactNode }) {
     >
       <p
         style={{
-          fontSize: 11,
-          letterSpacing: "0.06em",
+        fontSize: 12,
+        letterSpacing: "0.06em",
           color: gold,
           lineHeight: 1.8,
         }}

@@ -83,23 +83,35 @@ export default function LoginPage() {
         <h2
           style={{
             fontFamily: "'Cormorant Garamond', serif",
-            fontSize: 36,
+            fontSize: 38,
             fontStyle: "italic",
             fontWeight: 300,
-            marginBottom: 8,
+            marginBottom: 12,
           }}
         >
           Koi Fes
         </h2>
         <p
           style={{
-            fontSize: 10,
-            letterSpacing: "0.3em",
-            color: "#666",
-            marginBottom: 48,
+            fontSize: 16,
+            letterSpacing: "0.25em",
+            color: "rgba(255,255,255,0.85)",
+            marginBottom: 8,
+            fontWeight: 400,
           }}
         >
           恋フェス 徳島
+        </p>
+        <p
+          style={{
+            fontSize: 14,
+            letterSpacing: "0.4em",
+            color: "#c8a96e",
+            marginBottom: 48,
+            fontWeight: 500,
+          }}
+        >
+          2026
         </p>
         {!showLogin ? (
           <>
@@ -184,14 +196,14 @@ export default function LoginPage() {
           </div>
         )}
         <Link
-          href="/admin"
+          href="/admin/login"
           style={{
             marginTop: 40,
             display: "block",
             background: "none",
             border: "none",
             color: "#444",
-            fontSize: 10,
+            fontSize: 11,
             letterSpacing: "0.15em",
             cursor: "pointer",
             padding: 8,
