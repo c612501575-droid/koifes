@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   load,
@@ -409,63 +409,160 @@ function ScanScreen({
   onNav: (id: string) => void;
   onFound: (t: KoifesUser) => void;
 }) {
+  const [mode, setMode] = useState<"loading" | "camera" | "fallback">("loading");
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [focused, setFocused] = useState(false);
+  const scannerRef = useRef<{ stop: () => Promise<void> } | null>(null);
+
+  const resolveCode = useCallback(
+    async (decodedCode: string) => {
+      const codeStr = String(decodedCode || "").trim().toUpperCase().slice(0, 4);
+      if (codeStr.length < 4) return;
+      const data = await load();
+      const found = data.users.find((u) => u.code === codeStr && u.id !== user.id);
+      if (found) {
+        if (scannerRef.current) {
+          try {
+            await scannerRef.current.stop();
+          } catch {}
+        }
+        onFound(found);
+      } else {
+        setError("該当するユーザーが見つかりません");
+      }
+    },
+    [user.id, onFound]
+  );
 
   const search = async () => {
     setError("");
-    const data = await load();
-    const found = data.users.find((u) => u.code === code.toUpperCase() && u.id !== user.id);
-    if (found) onFound(found);
-    else setError("該当するユーザーが見つかりません");
+    await resolveCode(code);
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let mounted = true;
+    const initScanner = async () => {
+      try {
+        const { Html5Qrcode } = await import("html5-qrcode");
+        const container = document.getElementById("qr-reader-scan");
+        if (!container || !mounted) return;
+        const html5QrCode = new Html5Qrcode("qr-reader-scan");
+        scannerRef.current = html5QrCode;
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 220, height: 220 } },
+          (decodedText) => {
+            if (mounted) resolveCode(decodedText);
+          },
+          () => {}
+        );
+        if (mounted) setMode("camera");
+      } catch (err) {
+        console.warn("[ScanScreen] カメラ利用不可, フォールバック表示:", err);
+        if (scannerRef.current) {
+          try {
+            await scannerRef.current.stop();
+          } catch {}
+          scannerRef.current = null;
+        }
+        if (mounted) setMode("fallback");
+      }
+    };
+    initScanner();
+    return () => {
+      mounted = false;
+      scannerRef.current?.stop().catch(() => {});
+      scannerRef.current = null;
+    };
+  }, [resolveCode]);
+
+  const showFallback = () => {
+    if (scannerRef.current) {
+      scannerRef.current.stop().catch(() => {});
+      scannerRef.current = null;
+    }
+    setMode("fallback");
   };
 
   return (
     <div style={{ minHeight: "100vh", background: "#000", paddingBottom: 80, color: "#fff" }}>
       <Header title="Scan" onLeft={() => onNav("home")} />
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 24px" }}>
-        <div style={{ width: 180, height: 180, position: "relative", marginBottom: 44 }}>
-          <div style={{ position: "absolute", top: 0, left: 0, width: 28, height: 28, borderTop: `1px solid ${gold}`, borderLeft: `1px solid ${gold}` }} />
-          <div style={{ position: "absolute", top: 0, right: 0, width: 28, height: 28, borderTop: `1px solid ${gold}`, borderRight: `1px solid ${gold}` }} />
-          <div style={{ position: "absolute", bottom: 0, left: 0, width: 28, height: 28, borderBottom: `1px solid ${gold}`, borderLeft: `1px solid ${gold}` }} />
-          <div style={{ position: "absolute", bottom: 0, right: 0, width: 28, height: 28, borderBottom: `1px solid ${gold}`, borderRight: `1px solid ${gold}` }} />
-          <div style={{ position: "absolute", left: 4, right: 4, height: 1, top: "50%", background: `linear-gradient(90deg, transparent, ${gold}, transparent)`, animation: "scanPulse 2s ease-in-out infinite" }} />
-          <div style={{ width: "100%", height: "100%", border: "1px solid rgba(255,255,255,0.03)", background: "rgba(255,255,255,0.01)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontSize: 10, letterSpacing: "0.3em", color: "rgba(255,255,255,0.08)" }}>SCAN</span>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "24px" }}>
+        {(mode === "loading" || mode === "camera") && (
+          <div style={{ position: "relative", width: "100%", maxWidth: 300 }}>
+            <div
+              id="qr-reader-scan"
+              style={{
+                width: "100%",
+                marginBottom: 16,
+                minHeight: 200,
+                visibility: mode === "loading" ? "hidden" : "visible",
+                position: mode === "loading" ? "absolute" : "relative",
+              }}
+            />
+            {mode === "loading" && (
+              <div style={{ padding: "80px 24px", textAlign: "center" }}>
+                <p style={{ fontSize: 12, letterSpacing: "0.15em", color: "#999" }}>カメラを起動中...</p>
+              </div>
+            )}
           </div>
-        </div>
-        <p style={{ textAlign: "center", fontSize: 12, letterSpacing: "0.15em", color: "#999", lineHeight: 2, marginBottom: 32 }}>相手のQRコードをスキャン、<br />またはコードを入力</p>
-        <div style={{ width: "100%", maxWidth: 280 }}>
-          <input
-            value={code}
-            onChange={(e) => {
-              setCode(e.target.value.toUpperCase());
-              setError("");
-            }}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            placeholder="A1B2"
-            maxLength={4}
-            style={{
-              width: "100%",
-              background: "transparent",
-              border: "none",
-              borderBottom: `1px solid ${error ? "#e55" : focused ? gold : "rgba(255,255,255,0.15)"}`,
-              color: "#fff",
-              fontFamily: "'Cormorant Garamond', serif",
-              fontSize: 32,
-              fontWeight: 300,
-              padding: "12px 0",
-              outline: "none",
-              textAlign: "center",
-              letterSpacing: "0.4em",
-              transition: "border-color 0.3s",
-            }}
-          />
-          {error && <p style={{ fontSize: 11, color: "#e55", textAlign: "center", marginTop: 12 }}>{error}</p>}
-          <div style={{ marginTop: 24 }}><BtnPrimary onClick={search} disabled={code.length < 4}>プロフィールを表示</BtnPrimary></div>
-        </div>
+        )}
+        {mode === "camera" && (
+          <>
+            <p style={{ fontSize: 11, letterSpacing: "0.15em", color: "#999", marginBottom: 16 }}>相手のQRコードをフレーム内に合わせてください</p>
+            <button
+              onClick={showFallback}
+              style={{
+                background: "none",
+                border: "1px solid rgba(255,255,255,0.2)",
+                color: "#999",
+                fontSize: 11,
+                padding: "10px 20px",
+                cursor: "pointer",
+                letterSpacing: "0.1em",
+              }}
+            >
+              コードを手入力する
+            </button>
+          </>
+        )}
+        {mode === "fallback" && (
+          <div style={{ width: "100%", maxWidth: 280, paddingTop: 40 }}>
+            <p style={{ textAlign: "center", fontSize: 12, letterSpacing: "0.15em", color: "#999", lineHeight: 2, marginBottom: 32 }}>
+              4桁のコードを入力してください
+            </p>
+            <input
+              value={code}
+              onChange={(e) => {
+                setCode(e.target.value.toUpperCase());
+                setError("");
+              }}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              placeholder="A1B2"
+              maxLength={4}
+              style={{
+                width: "100%",
+                background: "transparent",
+                border: "none",
+                borderBottom: `1px solid ${error ? "#e55" : focused ? gold : "rgba(255,255,255,0.15)"}`,
+                color: "#fff",
+                fontFamily: "'Cormorant Garamond', serif",
+                fontSize: 32,
+                fontWeight: 300,
+                padding: "12px 0",
+                outline: "none",
+                textAlign: "center",
+                letterSpacing: "0.4em",
+                transition: "border-color 0.3s",
+              }}
+            />
+            {error && <p style={{ fontSize: 11, color: "#e55", textAlign: "center", marginTop: 12 }}>{error}</p>}
+            <div style={{ marginTop: 24 }}><BtnPrimary onClick={search} disabled={code.length < 4}>プロフィールを表示</BtnPrimary></div>
+          </div>
+        )}
       </div>
       <BottomNav active="scan" onNav={onNav} />
     </div>
