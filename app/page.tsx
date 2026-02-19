@@ -1,65 +1,111 @@
-import Image from "next/image";
+import Link from "next/link";
 
-export default function Home() {
+export default function SplashScreen() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#000",
+        position: "relative",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          top: "28%",
+          left: "50%",
+          transform: "translate(-50%,-50%)",
+          width: 500,
+          height: 500,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(200,169,110,0.05) 0%, transparent 60%)",
+          pointerEvents: "none",
+        }}
+      />
+      <div
+        style={{
+          textAlign: "center",
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
+        <div style={{ overflow: "hidden", lineHeight: 1 }}>
+          <span
+            style={{
+              fontFamily: "'Cormorant Garamond', serif",
+              fontSize: "clamp(52px,14vw,80px)",
+              fontWeight: 300,
+              fontStyle: "italic",
+              color: "#fff",
+              letterSpacing: "0.04em",
+              display: "block",
+              animation: "slideUp 1s cubic-bezier(0.16,1,0.3,1) 0.2s both",
+            }}
+          >
+            Koi Fes
+          </span>
+        </div>
+        <div style={{ overflow: "hidden" }}>
+          <span
+            style={{
+              fontFamily: "'Noto Serif JP', serif",
+              fontSize: "clamp(10px,2.5vw,13px)",
+              fontWeight: 200,
+              letterSpacing: "0.6em",
+              color: "rgba(255,255,255,0.45)",
+              display: "block",
+              marginTop: 20,
+              animation: "slideUp 1s cubic-bezier(0.16,1,0.3,1) 0.5s both",
+            }}
+          >
+            恋 フ ェ ス  徳 島  2 0 2 6
+          </span>
+        </div>
+        <div
+          style={{
+            width: 1,
+            margin: "44px auto",
+            background: "#c8a96e",
+            animation: "growLine 0.8s ease 1s both",
+          }}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+        <Link
+          href="/login"
+          style={{
+            fontFamily: "'Noto Sans JP', sans-serif",
+            fontSize: 11,
+            fontWeight: 300,
+            letterSpacing: "0.35em",
+            color: "rgba(255,255,255,0.7)",
+            background: "transparent",
+            border: "1px solid rgba(255,255,255,0.2)",
+            padding: "17px 52px",
+            cursor: "pointer",
+            animation: "fadeIn 0.8s ease 1.4s both",
+            transition: "all 0.35s ease",
+            textDecoration: "none",
+            display: "inline-block",
+          }}
+        >
+          ENTER
+        </Link>
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          bottom: 32,
+          fontSize: 9,
+          letterSpacing: "0.2em",
+          color: "rgba(255,255,255,0.15)",
+          animation: "fadeIn 1s ease 2s both",
+        }}
+      >
+        NEXT-GEN EVENT PLATFORM
+      </div>
     </div>
   );
 }
