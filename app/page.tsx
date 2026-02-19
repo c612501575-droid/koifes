@@ -37,7 +37,7 @@ export default function SplashScreen() {
           <span
             style={{
               fontFamily: "'Cormorant Garamond', serif",
-              fontSize: "clamp(52px,14vw,80px)",
+              fontSize: "clamp(58px,15vw,90px)",
               fontWeight: 300,
               fontStyle: "italic",
               color: "#fff",
@@ -53,10 +53,10 @@ export default function SplashScreen() {
           <span
             style={{
               fontFamily: "'Noto Serif JP', serif",
-              fontSize: "clamp(10px,2.5vw,13px)",
+              fontSize: "clamp(18px,4vw,22px)",
               fontWeight: 200,
               letterSpacing: "0.6em",
-              color: "rgba(255,255,255,0.45)",
+              color: "rgba(255,255,255,0.9)",
               display: "block",
               marginTop: 20,
               animation: "slideUp 1s cubic-bezier(0.16,1,0.3,1) 0.5s both",
@@ -77,13 +77,13 @@ export default function SplashScreen() {
           href="/login"
           style={{
             fontFamily: "'Noto Sans JP', sans-serif",
-            fontSize: 11,
+            fontSize: 18,
             fontWeight: 300,
             letterSpacing: "0.35em",
             color: "rgba(255,255,255,0.7)",
             background: "transparent",
             border: "1px solid rgba(255,255,255,0.2)",
-            padding: "17px 52px",
+            padding: "22px 64px",
             cursor: "pointer",
             animation: "fadeIn 0.8s ease 1.4s both",
             transition: "all 0.35s ease",
@@ -98,9 +98,9 @@ export default function SplashScreen() {
         style={{
           position: "absolute",
           bottom: 32,
-          fontSize: 9,
+          fontSize: 12,
           letterSpacing: "0.2em",
-          color: "rgba(255,255,255,0.15)",
+          color: "rgba(255,255,255,0.4)",
           animation: "fadeIn 1s ease 2s both",
         }}
       >
