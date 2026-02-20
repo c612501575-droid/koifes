@@ -99,6 +99,10 @@ export default function RegisterPage() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [step, completedCode]);
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [step]);
+
   const validate = () => {
     if (step === 0 && (!form.fullName || !form.nickname || !form.gender || !form.age || !form.ageNumber || !form.job || !form.family))
       return false;
