@@ -65,6 +65,22 @@ export default function SplashScreen() {
             恋 フ ェ ス  徳 島  2 0 2 6
           </span>
         </div>
+        <div style={{ overflow: "hidden", marginTop: 16 }}>
+          <span
+            style={{
+              fontFamily: "'Noto Serif JP', serif",
+              fontSize: "clamp(14px,3vw,18px)",
+              fontWeight: 200,
+              letterSpacing: "0.4em",
+              color: "rgba(255,255,255,0.7)",
+              display: "block",
+              animation: "slideUp 1s cubic-bezier(0.16,1,0.3,1) 0.6s both",
+              whiteSpace: "pre-line",
+            }}
+          >
+            恋フェス{"\n\n"}JAPAN
+          </span>
+        </div>
         <div
           style={{
             width: 1,

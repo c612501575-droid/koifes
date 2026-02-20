@@ -5,15 +5,21 @@ const SK_SESSION = "koifes-v5-session";
 export type KoifesUser = {
   id: string;
   code: string;
+  fullName?: string;
   nickname?: string;
   gender?: string;
   age?: string;
+  ageNumber?: number;
   height?: string;
   job?: string;
   family?: string;
+  siblings?: string;
+  livingWithFamily?: string;
   income?: string;
   marriage?: string;
+  marriageByWhen?: string;
   children?: string;
+  childrenByWhen?: string;
   hobbies?: string[];
   values?: string[];
   eventExp?: string;
@@ -63,15 +69,21 @@ function toDbUser(row: Record<string, unknown>): KoifesUser {
   return {
     id: row.id as string,
     code: row.code as string,
+    fullName: row.full_name as string,
     nickname: row.nickname as string,
     gender: row.gender as string,
     age: row.age as string,
+    ageNumber: row.age_number as number,
     height: row.height as string,
     job: row.job as string,
     family: row.family as string,
+    siblings: row.siblings as string,
+    livingWithFamily: row.living_with_family as string,
     income: row.income as string,
     marriage: row.marriage as string,
+    marriageByWhen: row.marriage_by_when as string,
     children: row.children as string,
+    childrenByWhen: row.children_by_when as string,
     hobbies: (row.hobbies as string[]) || [],
     values: (row.values as string[]) || [],
     eventExp: row.event_exp as string,
@@ -123,15 +135,21 @@ function toRowUser(u: KoifesUser): Record<string, unknown> {
   return {
     id: u.id,
     code: u.code,
+    full_name: u.fullName,
     nickname: u.nickname,
     gender: u.gender,
     age: u.age,
+    age_number: u.ageNumber ?? null,
     height,
     job: u.job,
     family: u.family,
+    siblings: u.siblings,
+    living_with_family: u.livingWithFamily,
     income: u.income,
     marriage: u.marriage,
+    marriage_by_when: u.marriageByWhen,
     children: u.children,
+    children_by_when: u.childrenByWhen,
     hobbies: u.hobbies || [],
     values: u.values || [],
     event_exp: u.eventExp,

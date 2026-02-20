@@ -25,7 +25,7 @@ export function Chip({
         color: selected ? "#000" : "rgba(255,255,255,0.55)",
         fontFamily: "'Noto Sans JP', sans-serif",
         fontSize: small ? 12 : 13,
-        fontWeight: selected ? 400 : 300,
+        fontWeight: 400,
         padding: small ? "7px 14px" : "10px 18px",
         cursor: "pointer",
         transition: "all 0.25s ease",
@@ -117,9 +117,9 @@ export function SliderInput({
         style={{
           textAlign: "center",
           marginTop: 12,
-          fontFamily: "'Cormorant Garamond', serif",
-          fontSize: 32,
-          fontWeight: 300,
+          fontFamily: "'Noto Sans JP', sans-serif",
+          fontSize: 28,
+          fontWeight: 500,
           lineHeight: 1,
         }}
       >
@@ -143,8 +143,8 @@ export function FormLabel({
     <label
       style={{
         display: "block",
-        fontSize: 12,
-        letterSpacing: "0.2em",
+        fontSize: 13,
+        letterSpacing: "0.1em",
         color: "#999",
         marginBottom: 12,
       }}
@@ -185,8 +185,8 @@ export function FormInput({
         borderBottom: `1px solid ${focused ? gold : "rgba(255,255,255,0.18)"}`,
         color: "#fff",
         fontFamily: "'Noto Sans JP', sans-serif",
-        fontSize: 19,
-        fontWeight: 300,
+        fontSize: 16,
+        fontWeight: 400,
         padding: "12px 0",
         outline: "none",
         borderRadius: 0,

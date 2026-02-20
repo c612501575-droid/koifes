@@ -29,11 +29,16 @@ import {
 import { QRCode } from "@/app/components/koifes/qr";
 import {
   AGES,
+  AGE_NUMBERS,
   JOBS,
   FAMILY,
+  SIBLINGS,
+  LIVING_WITH_FAMILY,
   INCOME,
   MARRIAGE,
+  MARRIAGE_BY_WHEN,
   CHILDREN,
+  CHILDREN_BY_WHEN,
   HOBBIES,
   VALUES,
   EVENT_EXP,
@@ -804,23 +809,27 @@ function ProfileScreen({
       <div style={{ padding: "16px 24px 40px", maxWidth: 480, margin: "0 auto", animation: "cardReveal 0.5s ease" }}>
         <div style={{ textAlign: "center", padding: "24px 0 8px" }}>
           <Avatar char={user.nickname?.[0]} size={72} borderColor={goldBorder} />
-          <h2 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 24, fontWeight: 300, marginTop: 16 }}>{user.nickname}</h2>
+          <h2 style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 22, fontWeight: 500, marginTop: 16 }}>{user.fullName || user.nickname}</h2>
           <p style={{ fontSize: 11, letterSpacing: "0.15em", color: "#666", marginTop: 6 }}>{[user.age, user.job, user.height && `${user.height}cm`].filter(Boolean).join(" · ")}</p>
-          <p style={{ fontSize: 10, letterSpacing: "0.25em", color: "#444", marginTop: 8, fontFamily: "'Cormorant Garamond', serif" }}>CODE: {user.code}</p>
+          <p style={{ fontSize: 10, letterSpacing: "0.25em", color: "#444", marginTop: 8, fontFamily: "'Noto Sans JP', sans-serif" }}>CODE: {user.code}</p>
         </div>
 
         <SH title="BASIC INFO" sid="basic" />
         {editing === "basic" ? (
           <EditBox>
+            <div style={{ marginBottom: 18 }}><FormLabel>フルネーム</FormLabel><FormInput value={draft.fullName || ""} onChange={(v) => setD("fullName", v)} maxLength={30} /></div>
             <div style={{ marginBottom: 18 }}><FormLabel>ニックネーム</FormLabel><FormInput value={draft.nickname || ""} onChange={(v) => setD("nickname", v)} maxLength={10} /></div>
             <div style={{ marginBottom: 18 }}><FormLabel>性別</FormLabel><ChipGroup options={["男性", "女性"]} value={draft.gender || ""} onChange={(v) => setD("gender", v as string)} small /></div>
-            <div style={{ marginBottom: 18 }}><FormLabel>年齢</FormLabel><ChipGroup options={AGES} value={draft.age || ""} onChange={(v) => setD("age", v as string)} small /></div>
+            <div style={{ marginBottom: 18 }}><FormLabel>年齢（年代）</FormLabel><ChipGroup options={AGES} value={draft.age || ""} onChange={(v) => setD("age", v as string)} small /></div>
+            <div style={{ marginBottom: 18 }}><FormLabel>年齢（数値）</FormLabel><ChipGroup options={AGE_NUMBERS} value={draft.ageNumber ? String(draft.ageNumber) : ""} onChange={(v) => setD("ageNumber", v ? parseInt(v as string, 10) : undefined)} small /></div>
             <div style={{ marginBottom: 18 }}><FormLabel>身長</FormLabel><FormInput value={draft.height || ""} onChange={(v) => setD("height", v)} type="number" /></div>
             <div style={{ marginBottom: 18 }}><FormLabel>職業</FormLabel><ChipGroup options={JOBS} value={draft.job || ""} onChange={(v) => setD("job", v as string)} small /></div>
-            <div style={{ marginBottom: 0 }}><FormLabel>家族構成</FormLabel><ChipGroup options={FAMILY} value={draft.family || ""} onChange={(v) => setD("family", v as string)} small /></div>
+            <div style={{ marginBottom: 18 }}><FormLabel>家族構成</FormLabel><ChipGroup options={FAMILY} value={draft.family || ""} onChange={(v) => setD("family", v as string)} small /></div>
+            <div style={{ marginBottom: 18 }}><FormLabel>兄弟構成</FormLabel><ChipGroup options={SIBLINGS} value={draft.siblings || ""} onChange={(v) => setD("siblings", v as string)} small /></div>
+            <div style={{ marginBottom: 0 }}><FormLabel>家族の有無</FormLabel><ChipGroup options={LIVING_WITH_FAMILY} value={draft.livingWithFamily || ""} onChange={(v) => setD("livingWithFamily", v as string)} small /></div>
           </EditBox>
         ) : (
-          <><Row label="ニックネーム" value={user.nickname} /><Row label="性別" value={user.gender} /><Row label="年齢" value={user.age} /><Row label="身長" value={user.height ? `${user.height}cm` : undefined} /><Row label="職業" value={user.job} /><Row label="家族構成" value={user.family} /></>
+          <><Row label="フルネーム" value={user.fullName} /><Row label="ニックネーム" value={user.nickname} /><Row label="性別" value={user.gender} /><Row label="年齢" value={user.age} /><Row label="年齢（数値）" value={user.ageNumber ? `${user.ageNumber}歳` : undefined} /><Row label="身長" value={user.height ? `${user.height}cm` : undefined} /><Row label="職業" value={user.job} /><Row label="家族構成" value={user.family} /><Row label="兄弟構成" value={user.siblings} /><Row label="家族の有無" value={user.livingWithFamily} /></>
         )}
 
         <SH title="VALUES & HOPES" sid="values" />
@@ -828,13 +837,15 @@ function ProfileScreen({
           <EditBox>
             <div style={{ marginBottom: 18 }}><FormLabel>年収帯</FormLabel><ChipGroup options={INCOME} value={draft.income || ""} onChange={(v) => setD("income", v as string)} small /></div>
             <div style={{ marginBottom: 18 }}><FormLabel>結婚の希望</FormLabel><ChipGroup options={MARRIAGE} value={draft.marriage || ""} onChange={(v) => setD("marriage", v as string)} accent small /></div>
-            <div style={{ marginBottom: 18 }}><FormLabel>子供の希望</FormLabel><ChipGroup options={CHILDREN} value={draft.children || ""} onChange={(v) => setD("children", v as string)} small /></div>
+            {["強く望んでいる", "できればしたい"].includes(draft.marriage || "") && <div style={{ marginBottom: 18, marginLeft: 12, paddingLeft: 12, borderLeft: "2px solid rgba(200,169,110,0.3)" }}><FormLabel>いつまでに？</FormLabel><ChipGroup options={MARRIAGE_BY_WHEN} value={draft.marriageByWhen || ""} onChange={(v) => setD("marriageByWhen", v as string)} accent small /></div>}
+            <div style={{ marginBottom: 18 }}><FormLabel>子供の希望</FormLabel><ChipGroup options={CHILDREN} value={draft.children || ""} onChange={(v) => setD("children", v as string)} accent small /></div>
+            {draft.children === "欲しい" && <div style={{ marginBottom: 18, marginLeft: 12, paddingLeft: 12, borderLeft: "2px solid rgba(200,169,110,0.3)" }}><FormLabel>いつまでに？</FormLabel><ChipGroup options={CHILDREN_BY_WHEN} value={draft.childrenByWhen || ""} onChange={(v) => setD("childrenByWhen", v as string)} accent small /></div>}
             <div style={{ marginBottom: 18 }}><FormLabel>趣味</FormLabel><ChipGroup options={HOBBIES} value={draft.hobbies || []} onChange={(v) => setD("hobbies", v as string[])} multi small /></div>
             <div style={{ marginBottom: 18 }}><FormLabel>価値観</FormLabel><ChipGroup options={VALUES} value={draft.values || []} onChange={(v) => setD("values", v as string[])} multi small /></div>
             <div style={{ marginBottom: 0 }}><FormLabel>参加歴</FormLabel><ChipGroup options={EVENT_EXP} value={draft.eventExp || ""} onChange={(v) => setD("eventExp", v as string)} small /></div>
           </EditBox>
         ) : (
-          <><Row label="年収帯" value={user.income} /><Row label="結婚の希望" value={user.marriage} /><Row label="子供の希望" value={user.children} /><Row label="趣味" value={(user.hobbies || []).join("、") || undefined} /><Row label="価値観" value={(user.values || []).join("、") || undefined} /><Row label="参加歴" value={user.eventExp} /></>
+          <><Row label="年収帯" value={user.income} /><Row label="結婚の希望" value={user.marriage} /><Row label="結婚の時期" value={user.marriageByWhen} hide={!["強く望んでいる", "できればしたい"].includes(user.marriage || "")} /><Row label="子供の希望" value={user.children} /><Row label="子供の時期" value={user.childrenByWhen} hide={user.children !== "欲しい"} /><Row label="趣味" value={(user.hobbies || []).join("、") || undefined} /><Row label="価値観" value={(user.values || []).join("、") || undefined} /><Row label="参加歴" value={user.eventExp} /></>
         )}
 
         <SH title="SELF SCORE" sid="score" />

@@ -5,11 +5,16 @@ import { useRouter } from "next/navigation";
 import { addUser, load, saveSession, type KoifesUser } from "@/app/lib/koifes-db";
 import {
   AGES,
+  AGE_NUMBERS,
   JOBS,
   FAMILY,
+  SIBLINGS,
+  LIVING_WITH_FAMILY,
   INCOME,
   MARRIAGE,
+  MARRIAGE_BY_WHEN,
   CHILDREN,
+  CHILDREN_BY_WHEN,
   HOBBIES,
   VALUES,
   EVENT_EXP,
@@ -38,15 +43,21 @@ import {
 
 const TOTAL_STEPS = 5;
 const INIT_FORM = {
+  fullName: "",
   nickname: "",
   gender: "",
   age: "",
+  ageNumber: "",
   height: "",
   job: "",
   family: "",
+  siblings: "",
+  livingWithFamily: "",
   income: "",
   marriage: "",
+  marriageByWhen: "",
   children: "",
+  childrenByWhen: "",
   hobbies: [] as string[],
   values: [] as string[],
   eventExp: "",
@@ -89,9 +100,15 @@ export default function RegisterPage() {
   }, [step, completedCode]);
 
   const validate = () => {
-    if (step === 0 && (!form.nickname || !form.gender || !form.age || !form.job || !form.family))
+    if (step === 0 && (!form.fullName || !form.nickname || !form.gender || !form.age || !form.ageNumber || !form.job || !form.family))
       return false;
-    if (step === 1 && (!form.marriage || !form.children)) return false;
+    if (step === 1) {
+      if (!form.marriage || !form.children) return false;
+      const marriageWants = ["強く望んでいる", "できればしたい"];
+      const childrenWants = ["欲しい"];
+      if (marriageWants.includes(form.marriage) && !form.marriageByWhen) return false;
+      if (childrenWants.includes(form.children) && !form.childrenByWhen) return false;
+    }
     if (step === 3 && !form.selfImprovement) return false;
     if (step === 4 && !form.stayTokushima) return false;
     return true;
@@ -103,15 +120,21 @@ export default function RegisterPage() {
     const newUser: KoifesUser = {
       id: uid(),
       code: code4(),
+      fullName: form.fullName,
       nickname: form.nickname,
       gender: form.gender,
       age: form.age,
+      ageNumber: form.ageNumber ? parseInt(form.ageNumber, 10) : undefined,
       height: form.height,
       job: form.job,
       family: form.family,
+      siblings: form.siblings,
+      livingWithFamily: form.livingWithFamily,
       income: form.income,
       marriage: form.marriage,
+      marriageByWhen: form.marriageByWhen || undefined,
       children: form.children,
+      childrenByWhen: form.childrenByWhen || undefined,
       hobbies: form.hobbies,
       values: form.values,
       eventExp: form.eventExp,
@@ -163,29 +186,39 @@ export default function RegisterPage() {
     // Step 1
     <div key={0}>
       <p style={{ fontSize: 11, letterSpacing: "0.4em", color: "#c8a96e", marginBottom: 8 }}>STEP 01</p>
-      <h2 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 23, fontWeight: 300, lineHeight: 1.6, marginBottom: 32 }}>基本情報を<br />入力してください</h2>
+      <h2 style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 22, fontWeight: 500, lineHeight: 1.6, marginBottom: 32 }}>基本情報を<br />入力してください</h2>
+      <div style={{ marginBottom: 32 }}><FormLabel required>フルネーム</FormLabel><FormInput value={form.fullName} onChange={(v) => set("fullName", v)} placeholder="例：山田 太郎" maxLength={30} /></div>
       <div style={{ marginBottom: 32 }}><FormLabel required>ニックネーム</FormLabel><FormInput value={form.nickname} onChange={(v) => set("nickname", v)} placeholder="例：さくら" maxLength={10} /></div>
       <div style={{ marginBottom: 32 }}><FormLabel required>性別</FormLabel><ChipGroup options={["男性", "女性"]} value={form.gender} onChange={(v) => set("gender", v as string)} /></div>
-      <div style={{ marginBottom: 32 }}><FormLabel required>年齢</FormLabel><ChipGroup options={AGES} value={form.age} onChange={(v) => set("age", v as string)} /></div>
+      <div style={{ marginBottom: 32 }}><FormLabel required>年齢（年代）</FormLabel><ChipGroup options={AGES} value={form.age} onChange={(v) => set("age", v as string)} small /></div>
+      <div style={{ marginBottom: 32 }}><FormLabel required>年齢（具体的な数値）</FormLabel><ChipGroup options={AGE_NUMBERS} value={form.ageNumber} onChange={(v) => set("ageNumber", v as string)} small /></div>
       <div style={{ marginBottom: 32 }}><FormLabel>身長 (cm)</FormLabel><FormInput value={form.height} onChange={(v) => set("height", v)} placeholder="165" type="number" /></div>
-      <div style={{ marginBottom: 32 }}><FormLabel required>職業</FormLabel><ChipGroup options={JOBS} value={form.job} onChange={(v) => set("job", v as string)} /></div>
-      <div style={{ marginBottom: 32 }}><FormLabel required>家族構成</FormLabel><ChipGroup options={FAMILY} value={form.family} onChange={(v) => set("family", v as string)} /></div>
+      <div style={{ marginBottom: 32 }}><FormLabel required>職業</FormLabel><ChipGroup options={JOBS} value={form.job} onChange={(v) => set("job", v as string)} small /></div>
+      <div style={{ marginBottom: 32 }}><FormLabel required>家族構成</FormLabel><ChipGroup options={FAMILY} value={form.family} onChange={(v) => set("family", v as string)} small /></div>
+      <div style={{ marginBottom: 32 }}><FormLabel>兄弟構成</FormLabel><ChipGroup options={SIBLINGS} value={form.siblings} onChange={(v) => set("siblings", v as string)} small /></div>
+      <div style={{ marginBottom: 32 }}><FormLabel>家族の有無（同居）</FormLabel><ChipGroup options={LIVING_WITH_FAMILY} value={form.livingWithFamily} onChange={(v) => set("livingWithFamily", v as string)} small /></div>
     </div>,
     // Step 2
     <div key={1}>
       <p style={{ fontSize: 11, letterSpacing: "0.4em", color: "#c8a96e", marginBottom: 8 }}>STEP 02</p>
-      <h2 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 23, fontWeight: 300, lineHeight: 1.6, marginBottom: 32 }}>価値観・希望を<br />教えてください</h2>
-      <div style={{ marginBottom: 32 }}><FormLabel>年収帯</FormLabel><ChipGroup options={INCOME} value={form.income} onChange={(v) => set("income", v as string)} /></div>
-      <div style={{ marginBottom: 32 }}><FormLabel required>結婚への希望</FormLabel><ChipGroup options={MARRIAGE} value={form.marriage} onChange={(v) => set("marriage", v as string)} accent /></div>
-      <div style={{ marginBottom: 32 }}><FormLabel required>子供の希望</FormLabel><ChipGroup options={CHILDREN} value={form.children} onChange={(v) => set("children", v as string)} /></div>
-      <div style={{ marginBottom: 32 }}><FormLabel>趣味（複数選択可）</FormLabel><ChipGroup options={HOBBIES} value={form.hobbies} onChange={(v) => set("hobbies", v as string[])} multi /></div>
-      <div style={{ marginBottom: 32 }}><FormLabel>大事にしている価値観（複数可）</FormLabel><ChipGroup options={VALUES} value={form.values} onChange={(v) => set("values", v as string[])} multi /></div>
-      <div style={{ marginBottom: 32 }}><FormLabel>イベント参加経験</FormLabel><ChipGroup options={EVENT_EXP} value={form.eventExp} onChange={(v) => set("eventExp", v as string)} /></div>
+      <h2 style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 22, fontWeight: 500, lineHeight: 1.6, marginBottom: 32 }}>価値観・希望を<br />教えてください</h2>
+      <div style={{ marginBottom: 32 }}><FormLabel>年収帯</FormLabel><ChipGroup options={INCOME} value={form.income} onChange={(v) => set("income", v as string)} small /></div>
+      <div style={{ marginBottom: 32 }}><FormLabel required>結婚への希望</FormLabel><ChipGroup options={MARRIAGE} value={form.marriage} onChange={(v) => set("marriage", v as string)} accent small /></div>
+      {["強く望んでいる", "できればしたい"].includes(form.marriage) && (
+        <div style={{ marginBottom: 32, marginLeft: 12, paddingLeft: 12, borderLeft: "2px solid rgba(200,169,110,0.3)" }}><FormLabel required>いつまでに？</FormLabel><ChipGroup options={MARRIAGE_BY_WHEN} value={form.marriageByWhen} onChange={(v) => set("marriageByWhen", v as string)} accent small /></div>
+      )}
+      <div style={{ marginBottom: 32 }}><FormLabel required>子供の希望</FormLabel><ChipGroup options={CHILDREN} value={form.children} onChange={(v) => set("children", v as string)} accent small /></div>
+      {form.children === "欲しい" && (
+        <div style={{ marginBottom: 32, marginLeft: 12, paddingLeft: 12, borderLeft: "2px solid rgba(200,169,110,0.3)" }}><FormLabel required>いつまでに？</FormLabel><ChipGroup options={CHILDREN_BY_WHEN} value={form.childrenByWhen} onChange={(v) => set("childrenByWhen", v as string)} accent small /></div>
+      )}
+      <div style={{ marginBottom: 32 }}><FormLabel>趣味（複数選択可）</FormLabel><ChipGroup options={HOBBIES} value={form.hobbies} onChange={(v) => set("hobbies", v as string[])} multi small /></div>
+      <div style={{ marginBottom: 32 }}><FormLabel>大事にしている価値観（複数可）</FormLabel><ChipGroup options={VALUES} value={form.values} onChange={(v) => set("values", v as string[])} multi small /></div>
+      <div style={{ marginBottom: 32 }}><FormLabel>イベント参加経験</FormLabel><ChipGroup options={EVENT_EXP} value={form.eventExp} onChange={(v) => set("eventExp", v as string)} small /></div>
     </div>,
     // Step 3
     <div key={2}>
       <p style={{ fontSize: 11, letterSpacing: "0.4em", color: "#c8a96e", marginBottom: 8 }}>STEP 03</p>
-      <h2 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 23, fontWeight: 300, lineHeight: 1.6, marginBottom: 32 }}>自己スコアを<br />入力してください</h2>
+      <h2 style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 22, fontWeight: 500, lineHeight: 1.6, marginBottom: 32 }}>自己スコアを<br />入力してください</h2>
       <div style={{ marginBottom: 32 }}><FormLabel>自己肯定感スコア</FormLabel><SliderInput subLeft="低い" subRight="高い" value={form.esteem} onChange={(v) => set("esteem", v)} /></div>
       <div style={{ marginBottom: 32 }}><FormLabel>異性への抵抗感</FormLabel><SliderInput subLeft="全くない" subRight="かなりある" value={form.resistance} onChange={(v) => set("resistance", v)} /></div>
       <div style={{ marginBottom: 32 }}><FormLabel>自己投資額（月）</FormLabel><ChipGroup options={INVEST} value={form.invest} onChange={(v) => set("invest", v as string)} /></div>
@@ -195,7 +228,7 @@ export default function RegisterPage() {
     // Step 4
     <div key={3}>
       <p style={{ fontSize: 11, letterSpacing: "0.4em", color: "#c8a96e", marginBottom: 8 }}>STEP 04</p>
-      <h2 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 23, fontWeight: 300, lineHeight: 1.6, marginBottom: 32 }}>自分磨きと<br />意識の変化について</h2>
+      <h2 style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 22, fontWeight: 500, lineHeight: 1.6, marginBottom: 32 }}>自分磨きと<br />意識の変化について</h2>
       <InfoBox>⚠ このデータは徳島市の少子化対策に匿名統計として活用されます</InfoBox>
       <div style={{ marginBottom: 32 }}><FormLabel required>本日のイベントに向けて「自分磨き」を行いましたか？</FormLabel><p style={{ fontSize: 11, color: "#666", marginBottom: 12 }}>美容院・ジム・服の新調・スキンケアなど</p><ChipGroup options={["はい", "いいえ"]} value={form.selfImprovement} onChange={(v) => set("selfImprovement", v as string)} /></div>
       {form.selfImprovement === "はい" && (
@@ -206,7 +239,7 @@ export default function RegisterPage() {
     // Step 5
     <div key={4}>
       <p style={{ fontSize: 11, letterSpacing: "0.4em", color: "#c8a96e", marginBottom: 8 }}>STEP 05</p>
-      <h2 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 23, fontWeight: 300, lineHeight: 1.6, marginBottom: 32 }}>徳島での生活と<br />将来について</h2>
+      <h2 style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 22, fontWeight: 500, lineHeight: 1.6, marginBottom: 32 }}>徳島での生活と<br />将来について</h2>
       <div style={{ marginBottom: 32 }}><FormLabel required>良いパートナーがいれば、今後も徳島に住み続けたいですか？</FormLabel><ChipGroup options={["ぜひ住みたい", "条件次第で", "どちらとも", "県外に出たい"]} value={form.stayTokushima} onChange={(v) => set("stayTokushima", v as string)} accent /></div>
       <div style={{ marginBottom: 32 }}><FormLabel>県外へ出たい（出た）最大の理由</FormLabel><ChipGroup options={LEAVE_REASONS} value={form.leaveReason} onChange={(v) => set("leaveReason", v as string)} /></div>
       {isTeen && (
@@ -241,7 +274,7 @@ export default function RegisterPage() {
             <path d="M5 12l5 5L20 7" />
           </svg>
         </div>
-        <p style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 22, fontWeight: 300, marginBottom: 32 }}>
+        <p style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 22, fontWeight: 500, marginBottom: 32 }}>
           プロフィールが完成しました
         </p>
         <div
@@ -253,7 +286,7 @@ export default function RegisterPage() {
           }}
         >
           <p style={{ fontSize: 10, letterSpacing: "0.3em", color: "#999", marginBottom: 12 }}>あなたのコード</p>
-          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 48, letterSpacing: "0.35em", color: "#c8a96e" }}>
+          <p style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 42, letterSpacing: "0.35em", color: "#c8a96e", fontWeight: 500 }}>
             {completedCode}
           </p>
         </div>
