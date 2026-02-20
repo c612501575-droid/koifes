@@ -214,7 +214,7 @@ function AppPageContent() {
                 style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.08)", padding: "28px 20px", cursor: "pointer", textAlign: "left" }}
               >
                 <span style={{ fontSize: 24, display: "block", marginBottom: 14, color: gold }}>{a.icon}</span>
-                <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 16, fontWeight: 300, color: "#fff", marginBottom: 6 }}>{a.title}</div>
+                <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: a.id === "history" ? 14 : 16, fontWeight: 300, color: "#fff", marginBottom: 6, whiteSpace: "nowrap" }}>{a.title}</div>
                 <div style={{ fontSize: 11, color: "#666", lineHeight: 1.8 }}>{a.desc}</div>
               </button>
             ))}
@@ -311,9 +311,8 @@ function AppPageContent() {
                 <div style={{ fontSize: 11, letterSpacing: "0.12em", color: "#999", lineHeight: 1.8 }}>{[user.age, user.job, user.height && `${user.height}cm`].filter(Boolean).join(" · ")}</div>
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 28 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20, marginBottom: 28 }}>
               {[
-                { l: "SELF ESTEEM", v: `${user.esteem ?? 5}/10`, g: 1 },
                 { l: "TALKS", v: conns },
                 { l: "MARRIAGE", v: user.marriage || "—", s: 1 },
                 { l: "CHILDREN", v: user.children || "—", s: 1 },
@@ -366,15 +365,17 @@ function AppPageContent() {
   if (screen === "viewProfile" && target) {
     const rows = [
       ["性別", target.gender],
+      ["年齢", target.ageNumber ? `${target.ageNumber}歳` : target.age],
       ["身長", target.height && `${target.height}cm`],
-      ["家族構成", target.family],
+      ["職業", target.job],
+      ["年収帯", target.income],
       ["結婚への希望", target.marriage],
+      ["結婚の時期", target.marriageByWhen],
       ["子供の希望", target.children],
+      ["子供の時期", target.childrenByWhen],
       ["趣味", (target.hobbies || []).join("、")],
       ["価値観", (target.values || []).join("、")],
-      ["自己投資", target.invest],
       ["参加歴", target.eventExp],
-      ["周りの評価", target.personality],
     ].filter(([, v]) => v);
     const isFavorited = db.favorites.some((f) => f.userId === user.id && f.favoriteUserId === target.id);
     const handleToggleFavorite = async () => {
@@ -944,44 +945,6 @@ function ProfileScreen({
           </EditBox>
         ) : (
           <><Row label="年収帯" value={user.income} /><Row label="結婚の希望" value={user.marriage} /><Row label="結婚の時期" value={user.marriageByWhen} hide={!["強く望んでいる", "できればしたい"].includes(user.marriage || "")} /><Row label="子供の希望" value={user.children} /><Row label="子供の時期" value={user.childrenByWhen} hide={user.children !== "欲しい"} /><Row label="趣味" value={(user.hobbies || []).join("、") || undefined} /><Row label="価値観" value={(user.values || []).join("、") || undefined} /><Row label="参加歴" value={user.eventExp} /></>
-        )}
-
-        <SH title="SELF SCORE" sid="score" />
-        {editing === "score" ? (
-          <EditBox>
-            <div style={{ marginBottom: 18 }}><FormLabel>自己肯定感</FormLabel><SliderInput subLeft="低い" subRight="高い" value={draft.esteem ?? 5} onChange={(v) => setD("esteem", v)} /></div>
-            <div style={{ marginBottom: 18 }}><FormLabel>異性への抵抗感</FormLabel><SliderInput subLeft="全くない" subRight="かなりある" value={draft.resistance ?? 5} onChange={(v) => setD("resistance", v)} /></div>
-            <div style={{ marginBottom: 18 }}><FormLabel>自己投資額</FormLabel><ChipGroup options={INVEST} value={draft.invest || ""} onChange={(v) => setD("invest", v as string)} small /></div>
-            <div style={{ marginBottom: 18 }}><FormLabel>短所</FormLabel><ChipGroup options={WEAKNESS} value={draft.weakness || ""} onChange={(v) => setD("weakness", v as string)} small /></div>
-            <div style={{ marginBottom: 0 }}><FormLabel>周りの評価</FormLabel><FormInput value={draft.personality || ""} onChange={(v) => setD("personality", v)} /></div>
-          </EditBox>
-        ) : (
-          <><Row label="自己肯定感" value={`${user.esteem ?? 5} / 10`} /><Row label="異性への抵抗感" value={`${user.resistance ?? 5} / 10`} /><Row label="自己投資額" value={user.invest} /><Row label="短所" value={user.weakness} /><Row label="周りの評価" value={user.personality} /></>
-        )}
-
-        <SH title="SELF IMPROVEMENT" sid="improve" />
-        {editing === "improve" ? (
-          <EditBox>
-            <div style={{ marginBottom: 18 }}><FormLabel>自分磨きを行った？</FormLabel><ChipGroup options={["はい", "いいえ"]} value={draft.selfImprovement || ""} onChange={(v) => setD("selfImprovement", v as string)} small /></div>
-            {draft.selfImprovement === "はい" && <div style={{ marginBottom: 18 }}><FormLabel>自信が持てた？</FormLabel><ChipGroup options={CONFIDENCE_5} value={draft.improvementConfidence || ""} onChange={(v) => setD("improvementConfidence", v as string)} small /></div>}
-            <div style={{ marginBottom: 0 }}><FormLabel>心理的ハードルの変化</FormLabel><ChipGroup options={BARRIER_CHANGE} value={draft.barrierChange || ""} onChange={(v) => setD("barrierChange", v as string)} small /></div>
-          </EditBox>
-        ) : (
-          <><Row label="自分磨き" value={user.selfImprovement} /><Row label="自信の変化" value={user.improvementConfidence} hide={user.selfImprovement !== "はい"} /><Row label="ハードル変化" value={user.barrierChange} /></>
-        )}
-
-        <SH title="TOKUSHIMA LIFE" sid="tokushima" />
-        {editing === "tokushima" ? (
-          <EditBox>
-            <div style={{ marginBottom: 18 }}><FormLabel>徳島に住み続けたい？</FormLabel><ChipGroup options={["ぜひ住みたい", "条件次第で", "どちらとも", "県外に出たい"]} value={draft.stayTokushima || ""} onChange={(v) => setD("stayTokushima", v as string)} accent small /></div>
-            <div style={{ marginBottom: 18 }}><FormLabel>県外へ出たい理由</FormLabel><ChipGroup options={LEAVE_REASONS} value={draft.leaveReason || ""} onChange={(v) => setD("leaveReason", v as string)} small /></div>
-            {isTeen && <div style={{ marginBottom: 18, background: "rgba(200,169,110,0.05)", padding: 12, border: `1px solid ${goldBorder}` }}><p style={{ fontSize: 9, color: gold, marginBottom: 8, letterSpacing: "0.1em" }}>10代の方への質問</p><FormLabel>これがあれば残る要素（複数可）</FormLabel><ChipGroup options={STAY_CONDITIONS} value={draft.stayConditions || []} onChange={(v) => setD("stayConditions", v as string[])} multi accent small /></div>}
-            <div style={{ marginBottom: 18 }}><FormLabel>徳島で家を購入したい？</FormLabel><ChipGroup options={["ぜひしたい", "条件が合えば", "あまり考えていない", "購入しない"]} value={draft.buyHouse || ""} onChange={(v) => setD("buyHouse", v as string)} small /></div>
-            <div style={{ marginBottom: 18 }}><FormLabel>住居の条件（複数可）</FormLabel><ChipGroup options={HOUSING_CONDS} value={draft.housingConditions || []} onChange={(v) => setD("housingConditions", v as string[])} multi small /></div>
-            <div style={{ marginBottom: 0 }}><FormLabel>会社の支援で定住意向は上がる？</FormLabel><ChipGroup options={COMPANY_SUPPORT} value={draft.companySupport || ""} onChange={(v) => setD("companySupport", v as string)} small /></div>
-          </EditBox>
-        ) : (
-          <><Row label="定住意向" value={user.stayTokushima} /><Row label="県外理由" value={user.leaveReason} /><Row label="残る条件" value={(user.stayConditions || []).join("、") || undefined} hide={user.age !== "10代"} /><Row label="家購入意向" value={user.buyHouse} /><Row label="住居の条件" value={(user.housingConditions || []).join("、") || undefined} /><Row label="企業支援効果" value={user.companySupport} /></>
         )}
       </div>
       <BottomNav active="profile" onNav={onNav} />

@@ -174,7 +174,7 @@ export default function RegisterPage() {
       console.log("[register] セッション保存完了, 完了画面を3秒表示");
       setCompletedCode(newUser.code);
       setTimeout(() => {
-        router.push("/app?screen=card");
+        router.push("/app");
         router.refresh();
       }, 3000);
     } catch (err) {
