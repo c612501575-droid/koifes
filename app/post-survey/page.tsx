@@ -50,6 +50,10 @@ export default function PostSurveyPage() {
   const ATTEND_OPTIONS = ["ぜひまた参加したい", "機会があれば", "わからない", "あまり参加したいと思わない"];
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [step]);
+
+  useEffect(() => {
     (async () => {
       const sid = loadSession();
       if (!sid) {

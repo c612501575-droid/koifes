@@ -53,9 +53,9 @@ export default function SplashScreen() {
           <span
             style={{
               fontFamily: "'Noto Serif JP', serif",
-              fontSize: "clamp(18px,4vw,22px)",
+              fontSize: "clamp(12px,3.2vw,20px)",
               fontWeight: 200,
-              letterSpacing: "0.6em",
+              letterSpacing: "0.35em",
               color: "rgba(255,255,255,0.9)",
               display: "block",
               marginTop: 20,
@@ -71,14 +71,13 @@ export default function SplashScreen() {
               fontFamily: "'Noto Serif JP', serif",
               fontSize: "clamp(14px,3vw,18px)",
               fontWeight: 200,
-              letterSpacing: "0.4em",
+              letterSpacing: "0.3em",
               color: "rgba(255,255,255,0.7)",
               display: "block",
               animation: "slideUp 1s cubic-bezier(0.16,1,0.3,1) 0.6s both",
-              whiteSpace: "pre-line",
             }}
           >
-            恋フェス{"\n\n"}JAPAN
+            恋フェス JAPAN
           </span>
         </div>
         <div

@@ -15,6 +15,7 @@ export default function FollowupPage() {
   const [loading, setLoading] = useState(true);
   const [peers, setPeers] = useState<KoifesUser[]>([]);
   const [followups, setFollowups] = useState<Record<string, { want_contact: boolean; contact_method: string; message: string }>>({});
+  const [mutualMap, setMutualMap] = useState<Record<string, { contact_method: string; message: string }>>({});
   const [editing, setEditing] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -50,6 +51,20 @@ export default function FollowupPage() {
         };
       });
       setFollowups(map);
+
+      const { data: mutualData } = await supabase
+        .from("koifes_followups")
+        .select("*")
+        .eq("to_user_id", sid)
+        .eq("want_contact", true);
+      const mMap: Record<string, { contact_method: string; message: string }> = {};
+      (mutualData || []).forEach((m: { from_user_id: string; contact_method: string | null; message: string | null }) => {
+        mMap[m.from_user_id] = {
+          contact_method: m.contact_method || "",
+          message: m.message || "",
+        };
+      });
+      setMutualMap(mMap);
       setLoading(false);
     })();
   }, [router]);
@@ -117,13 +132,14 @@ export default function FollowupPage() {
             {peers.map((p) => {
               const f = followups[p.id] || { want_contact: false, contact_method: "", message: "" };
               const isEditing = editing === p.id;
+              const mutual = f.want_contact && mutualMap[p.id];
               return (
                 <div
                   key={p.id}
                   style={{
-                    border: `1px solid ${faintLine2}`,
+                    border: mutual ? `1px solid ${gold}` : `1px solid ${faintLine2}`,
                     padding: 20,
-                    background: "rgba(255,255,255,0.02)",
+                    background: mutual ? "rgba(200,169,110,0.04)" : "rgba(255,255,255,0.02)",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: isEditing ? 20 : 0 }}>
@@ -148,11 +164,20 @@ export default function FollowupPage() {
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 15, fontWeight: 300 }}>{p.nickname}</div>
                       <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>{p.age} · {p.job}</div>
-                      {f.want_contact && (
+                      {mutual ? (
+                        <div style={{ marginTop: 12 }}>
+                          <div style={{ fontSize: 12, color: gold, letterSpacing: "0.05em", marginBottom: 8 }}>
+                            ✧ マッチしました！ 相手も連絡先交換を希望しています
+                          </div>
+                          <div style={{ fontSize: 11, color: "#999", marginBottom: 4 }}>相手の希望連絡方法：{mutual.contact_method || "—"}</div>
+                          {mutual.message && <div style={{ fontSize: 11, color: "#999", marginBottom: 8 }}>相手からのメッセージ：「{mutual.message}」</div>}
+                          <div style={{ fontSize: 9, color: "#555", marginTop: 8 }}>※ 実際の連絡先の交換は、運営を通じて行われます</div>
+                        </div>
+                      ) : f.want_contact ? (
                         <div style={{ fontSize: 10, color: gold, marginTop: 6, letterSpacing: "0.1em" }}>
                           リクエスト済み {f.contact_method && `（${f.contact_method}）`}
                         </div>
-                      )}
+                      ) : null}
                     </div>
                     {!isEditing ? (
                       <button

@@ -205,8 +205,8 @@ function AppPageContent() {
           </button>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {[
-              { id: "scan", icon: "⊡", title: "スキャン", desc: "相手のコードを\n読み取る" },
-              { id: "history", icon: "◇", title: "履歴 & お気に入り", desc: "接続した人を\n確認する" },
+              { id: "scan", icon: "⊡", title: "スキャン", desc: "相手のコードを読み取る" },
+              { id: "history", icon: "◇", title: "履歴・お気に入り", desc: "接続した人を確認する" },
             ].map((a) => (
               <button
                 key={a.id}
@@ -215,17 +215,23 @@ function AppPageContent() {
               >
                 <span style={{ fontSize: 24, display: "block", marginBottom: 14, color: gold }}>{a.icon}</span>
                 <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 16, fontWeight: 300, color: "#fff", marginBottom: 6 }}>{a.title}</div>
-                <div style={{ fontSize: 11, color: "#666", lineHeight: 1.8, whiteSpace: "pre-line" }}>{a.desc}</div>
+                <div style={{ fontSize: 11, color: "#666", lineHeight: 1.8 }}>{a.desc}</div>
               </button>
             ))}
           </div>
           {/* === AFTER EVENT セクション === */}
-          <div style={{ marginTop: 24 }}>
+          <div style={{ marginTop: 80 }}>
+            <div style={{
+              height: 1,
+              background: "rgba(255,255,255,0.06)",
+              marginBottom: 24,
+            }} />
             <p style={{
               fontSize: 9,
               letterSpacing: "0.3em",
-              color: "#555",
+              color: "#333",
               marginBottom: 12,
+              textAlign: "center",
             }}>AFTER EVENT</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <button
