@@ -58,11 +58,17 @@ export type KoifesConnection = {
   createdAt: string;
 };
 
+export type KoifesFavorite = {
+  id: string;
+  userId: string;
+  favoriteUserId: string;
+};
+
 export type KoifesDb = {
   users: KoifesUser[];
   ratings: KoifesRating[];
   connections: KoifesConnection[];
-  favorites?: { userId: string }[];
+  favorites: KoifesFavorite[];
 };
 
 function toDbUser(row: Record<string, unknown>): KoifesUser {
@@ -172,10 +178,11 @@ function toRowUser(u: KoifesUser): Record<string, unknown> {
 
 export async function load(): Promise<KoifesDb> {
   try {
-    const [usersRes, ratingsRes, connectionsRes] = await Promise.all([
+    const [usersRes, ratingsRes, connectionsRes, favoritesRes] = await Promise.all([
       supabase.from("koifes_users").select("*"),
       supabase.from("koifes_ratings").select("*"),
       supabase.from("koifes_connections").select("*"),
+      supabase.from("koifes_favorites").select("*"),
     ]);
 
     if (usersRes.error) {
@@ -187,15 +194,23 @@ export async function load(): Promise<KoifesDb> {
     if (connectionsRes.error) {
       console.error("[koifes-db] load connections failed:", connectionsRes.error.message, connectionsRes.error.details);
     }
+    if (favoritesRes.error) {
+      console.error("[koifes-db] load favorites failed:", favoritesRes.error.message, favoritesRes.error.details);
+    }
 
     const users = (usersRes.data || []).map(toDbUser);
     const ratings = (ratingsRes.data || []).map(toDbRating);
     const connections = (connectionsRes.data || []).map(toDbConnection);
+    const favorites = (favoritesRes.data || []).map((f: Record<string, unknown>) => ({
+      id: f.id as string,
+      userId: f.user_id as string,
+      favoriteUserId: f.favorite_user_id as string,
+    }));
 
-    return { users, ratings, connections };
+    return { users, ratings, connections, favorites };
   } catch (err) {
     console.error("[koifes-db] load failed:", err);
-    return { users: [], ratings: [], connections: [] };
+    return { users: [], ratings: [], connections: [], favorites: [] };
   }
 }
 
@@ -253,6 +268,30 @@ export async function addConnection(conn: KoifesConnection): Promise<void> {
     if (error.code !== "23505") {
       console.error("[koifes-db] addConnection failed:", error.message, error.details);
     }
+  }
+}
+
+export async function toggleFavorite(userId: string, favoriteUserId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("koifes_favorites")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("favorite_user_id", favoriteUserId)
+    .maybeSingle();
+
+  if (data) {
+    await supabase.from("koifes_favorites").delete().eq("id", data.id);
+    return false;
+  } else {
+    const { error } = await supabase.from("koifes_favorites").insert({
+      user_id: userId,
+      favorite_user_id: favoriteUserId,
+    });
+    if (error) {
+      console.error("[koifes-db] toggleFavorite insert failed:", error.message);
+      throw new Error("お気に入りの追加に失敗しました");
+    }
+    return true;
   }
 }
 
