@@ -9,7 +9,6 @@ import {
   addRating,
   addConnection,
   updateUser,
-  toggleFavorite,
   type KoifesUser,
   type KoifesDb,
 } from "@/app/lib/koifes-db";
@@ -59,8 +58,6 @@ function AppPageContent() {
   const [screen, setScreen] = useState("home");
   const [user, setUser] = useState<KoifesUser | null>(null);
   const [target, setTarget] = useState<KoifesUser | null>(null);
-  const [profileFromScreen, setProfileFromScreen] = useState<"scan" | "history">("scan");
-  const [historyFilter, setHistoryFilter] = useState<"all" | "favorites">("all");
   const [db, setDb] = useState<KoifesDb>({ users: [], ratings: [], connections: [], favorites: [] });
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState({ msg: "", show: false });
@@ -205,8 +202,8 @@ function AppPageContent() {
           </button>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {[
-              { id: "scan", icon: "⊡", title: "スキャン", desc: "相手のコードを読み取る" },
-              { id: "history", icon: "◇", title: "履歴・お気に入り", desc: "接続した人を確認する" },
+              { id: "scan", icon: "⊡", title: "スキャン", desc: "相手のコードを\n読み取る" },
+              { id: "history", icon: "◇", title: "履歴 & お気に入り", desc: "接続した人を\n確認する" },
             ].map((a) => (
               <button
                 key={a.id}
@@ -214,24 +211,18 @@ function AppPageContent() {
                 style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.08)", padding: "28px 20px", cursor: "pointer", textAlign: "left" }}
               >
                 <span style={{ fontSize: 24, display: "block", marginBottom: 14, color: gold }}>{a.icon}</span>
-                <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: a.id === "history" ? 14 : 16, fontWeight: 300, color: "#fff", marginBottom: 6, whiteSpace: "nowrap" }}>{a.title}</div>
-                <div style={{ fontSize: 11, color: "#666", lineHeight: 1.8 }}>{a.desc}</div>
+                <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 16, fontWeight: 300, color: "#fff", marginBottom: 6 }}>{a.title}</div>
+                <div style={{ fontSize: 11, color: "#666", lineHeight: 1.8, whiteSpace: "pre-line" }}>{a.desc}</div>
               </button>
             ))}
           </div>
           {/* === AFTER EVENT セクション === */}
-          <div style={{ marginTop: 80 }}>
-            <div style={{
-              height: 1,
-              background: "rgba(255,255,255,0.06)",
-              marginBottom: 24,
-            }} />
+          <div style={{ marginTop: 24 }}>
             <p style={{
               fontSize: 9,
               letterSpacing: "0.3em",
-              color: "#333",
+              color: "#555",
               marginBottom: 12,
-              textAlign: "center",
             }}>AFTER EVENT</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <button
@@ -311,8 +302,9 @@ function AppPageContent() {
                 <div style={{ fontSize: 11, letterSpacing: "0.12em", color: "#999", lineHeight: 1.8 }}>{[user.age, user.job, user.height && `${user.height}cm`].filter(Boolean).join(" · ")}</div>
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20, marginBottom: 28 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 28 }}>
               {[
+                { l: "SELF ESTEEM", v: `${user.esteem ?? 5}/10`, g: 1 },
                 { l: "TALKS", v: conns },
                 { l: "MARRIAGE", v: user.marriage || "—", s: 1 },
                 { l: "CHILDREN", v: user.children || "—", s: 1 },
@@ -353,7 +345,6 @@ function AppPageContent() {
         user={user}
         onNav={nav}
         onFound={(t) => {
-          setProfileFromScreen("scan");
           setTarget(t);
           setScreen("viewProfile");
         }}
@@ -365,30 +356,19 @@ function AppPageContent() {
   if (screen === "viewProfile" && target) {
     const rows = [
       ["性別", target.gender],
-      ["年齢", target.ageNumber ? `${target.ageNumber}歳` : target.age],
       ["身長", target.height && `${target.height}cm`],
-      ["職業", target.job],
-      ["年収帯", target.income],
+      ["家族構成", target.family],
       ["結婚への希望", target.marriage],
-      ["結婚の時期", target.marriageByWhen],
       ["子供の希望", target.children],
-      ["子供の時期", target.childrenByWhen],
       ["趣味", (target.hobbies || []).join("、")],
       ["価値観", (target.values || []).join("、")],
+      ["自己投資", target.invest],
       ["参加歴", target.eventExp],
+      ["周りの評価", target.personality],
     ].filter(([, v]) => v);
-    const isFavorited = db.favorites.some((f) => f.userId === user.id && f.favoriteUserId === target.id);
-    const handleToggleFavorite = async () => {
-      try {
-        await toggleFavorite(user.id, target.id);
-        await refreshDb();
-      } catch (err) {
-        showToast("エラーが発生しました");
-      }
-    };
     return (
       <div style={{ minHeight: "100vh", background: "#000", color: "#fff" }}>
-        <Header title="Profile" onLeft={() => setScreen(profileFromScreen)} />
+        <Header title="Profile" onLeft={() => setScreen("scan")} />
         <div style={{ padding: "24px 24px 140px", maxWidth: 480, margin: "0 auto", animation: "cardReveal 0.6s ease" }}>
           <div style={{ textAlign: "center", marginBottom: 36 }}>
             <Avatar char={target.nickname?.[0]} size={80} borderColor={goldBorder} />
@@ -402,23 +382,7 @@ function AppPageContent() {
             </div>
           ))}
         </div>
-        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "linear-gradient(to top, #000 60%, transparent)", padding: "24px 24px 36px", maxWidth: 480, margin: "0 auto", display: "flex", flexDirection: "column", gap: 12 }}>
-          <button
-            onClick={handleToggleFavorite}
-            style={{
-              width: "100%",
-              padding: "14px 20px",
-              background: isFavorited ? "rgba(200,169,110,0.15)" : "transparent",
-              border: `1px solid ${isFavorited ? gold : "rgba(255,255,255,0.2)"}`,
-              color: isFavorited ? gold : "rgba(255,255,255,0.7)",
-              fontSize: 13,
-              cursor: "pointer",
-              fontFamily: "'Noto Sans JP', sans-serif",
-              letterSpacing: "0.1em",
-            }}
-          >
-            {isFavorited ? "♥ お気に入り済み" : "♡ お気に入りに追加"}
-          </button>
+        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "linear-gradient(to top, #000 60%, transparent)", padding: "32px 24px 36px", maxWidth: 480, margin: "0 auto" }}>
           <BtnPrimary onClick={() => setScreen("rate")}>この人を評価する →</BtnPrimary>
         </div>
       </div>
@@ -443,94 +407,31 @@ function AppPageContent() {
 
   // HistoryScreen
   if (screen === "history") {
-    const allPeers = db.connections
+    const peers = db.connections
       .filter((c) => c.from === user.id || c.to === user.id)
       .map((c) => db.users.find((u) => u.id === (c.from === user.id ? c.to : c.from)))
       .filter(Boolean) as KoifesUser[];
-    const favoriteIds = new Set(db.favorites.filter((f) => f.userId === user.id).map((f) => f.favoriteUserId));
-    const peers = historyFilter === "favorites" ? allPeers.filter((p) => favoriteIds.has(p.id)) : allPeers;
     return (
       <div style={{ minHeight: "100vh", background: "#000", paddingBottom: 80, color: "#fff" }}>
         <Header title="History" onLeft={() => nav("home")} />
         <div style={{ padding: 24, maxWidth: 480, margin: "0 auto" }}>
           <p style={{ fontSize: 10, letterSpacing: "0.4em", color: gold, marginBottom: 8 }}>CONNECTIONS</p>
-          <div style={{ display: "flex", gap: 0, marginBottom: 24, borderBottom: `1px solid ${faintLine2}` }}>
-            <button
-              onClick={() => setHistoryFilter("all")}
-              style={{
-                flex: 1,
-                padding: "12px 16px",
-                background: "transparent",
-                border: "none",
-                borderBottom: historyFilter === "all" ? `2px solid ${gold}` : "2px solid transparent",
-                color: historyFilter === "all" ? gold : "#666",
-                fontSize: 12,
-                cursor: "pointer",
-                fontFamily: "'Noto Sans JP', sans-serif",
-              }}
-            >
-              すべて
-            </button>
-            <button
-              onClick={() => setHistoryFilter("favorites")}
-              style={{
-                flex: 1,
-                padding: "12px 16px",
-                background: "transparent",
-                border: "none",
-                borderBottom: historyFilter === "favorites" ? `2px solid ${gold}` : "2px solid transparent",
-                color: historyFilter === "favorites" ? gold : "#666",
-                fontSize: 12,
-                cursor: "pointer",
-                fontFamily: "'Noto Sans JP', sans-serif",
-              }}
-            >
-              お気に入りのみ
-            </button>
-          </div>
           <h2 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 20, fontWeight: 300, marginBottom: 24 }}>接続した人：{peers.length}人</h2>
           {peers.length === 0 ? (
             <div style={{ textAlign: "center", padding: "60px 0" }}>
               <p style={{ fontSize: 28, marginBottom: 16, opacity: 0.15 }}>◇</p>
-              <p style={{ fontSize: 12, color: "#555" }}>{historyFilter === "favorites" ? "お気に入りがまだありません" : "まだ誰とも接続していません"}</p>
+              <p style={{ fontSize: 12, color: "#555" }}>まだ誰とも接続していません</p>
             </div>
           ) : (
-            peers.map((p) => {
-              const isFav = favoriteIds.has(p.id);
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => {
-                    setProfileFromScreen("history");
-                    setTarget(p);
-                    setScreen("viewProfile");
-                  }}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 16,
-                    padding: "16px 0",
-                    borderBottom: `1px solid ${faintLine2}`,
-                    background: "transparent",
-                    borderLeft: "none",
-                    borderRight: "none",
-                    borderTop: "none",
-                    cursor: "pointer",
-                    textAlign: "left",
-                  }}
-                >
-                  <div style={{ width: 44, height: 44, border: "1px solid rgba(255,255,255,0.12)", flexShrink: 0, background: "#111", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontFamily: "'Cormorant Garamond', serif", color: gold, fontStyle: "italic" }}>{p.nickname?.[0]}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 14, fontWeight: 300 }}>{p.nickname}</span>
-                      {isFav && <span style={{ color: gold, fontSize: 14 }}>♥</span>}
-                    </div>
-                    <div style={{ fontSize: 11, color: "#666", marginTop: 3 }}>{p.age} · {p.job}</div>
-                  </div>
-                </button>
-              );
-            })
+            peers.map((p) => (
+              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 0", borderBottom: `1px solid ${faintLine2}` }}>
+                <div style={{ width: 44, height: 44, border: "1px solid rgba(255,255,255,0.12)", flexShrink: 0, background: "#111", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontFamily: "'Cormorant Garamond', serif", color: gold, fontStyle: "italic" }}>{p.nickname?.[0]}</div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 300 }}>{p.nickname}</div>
+                  <div style={{ fontSize: 11, color: "#666", marginTop: 3 }}>{p.age} · {p.job}</div>
+                </div>
+              </div>
+            ))
           )}
         </div>
         <BottomNav active="home" onNav={nav} />
@@ -828,7 +729,7 @@ function RateScreen({
 
   return (
     <div style={{ minHeight: "100vh", background: "#000", display: "flex", flexDirection: "column", color: "#fff" }}>
-      <Header title="Impression" onLeft={onBack} />
+      <Header title="Review" onLeft={onBack} />
       <div style={{ display: "flex", alignItems: "center", gap: 16, padding: 24, borderBottom: `1px solid ${faintLine}`, maxWidth: 480, margin: "0 auto", width: "100%" }}>
         <Avatar char={target.nickname?.[0]} size={48} />
         <div>
@@ -836,7 +737,7 @@ function RateScreen({
           <div style={{ fontSize: 11, color: "#999", marginTop: 4 }}>{target.age} · {target.job}</div>
         </div>
       </div>
-      <InfoBox>✧ この記録は相手には一切表示されません。あなたの印象メモとして、また匿名統計データとして徳島の地域づくりに活かされます。</InfoBox>
+      <InfoBox>⚠ この評価は相手には表示されません。集計データとして徳島市の少子化対策に活用されます。</InfoBox>
       <div style={{ flex: 1, padding: "8px 24px 40px", maxWidth: 480, margin: "0 auto", width: "100%" }}>
         <SR label="ファーストインプレッション" value={imp} onChange={setImp} />
         <SR label="話しやすさ" value={ease} onChange={setEase} />
@@ -945,6 +846,44 @@ function ProfileScreen({
           </EditBox>
         ) : (
           <><Row label="年収帯" value={user.income} /><Row label="結婚の希望" value={user.marriage} /><Row label="結婚の時期" value={user.marriageByWhen} hide={!["強く望んでいる", "できればしたい"].includes(user.marriage || "")} /><Row label="子供の希望" value={user.children} /><Row label="子供の時期" value={user.childrenByWhen} hide={user.children !== "欲しい"} /><Row label="趣味" value={(user.hobbies || []).join("、") || undefined} /><Row label="価値観" value={(user.values || []).join("、") || undefined} /><Row label="参加歴" value={user.eventExp} /></>
+        )}
+
+        <SH title="SELF SCORE" sid="score" />
+        {editing === "score" ? (
+          <EditBox>
+            <div style={{ marginBottom: 18 }}><FormLabel>自己肯定感</FormLabel><SliderInput subLeft="低い" subRight="高い" value={draft.esteem ?? 5} onChange={(v) => setD("esteem", v)} /></div>
+            <div style={{ marginBottom: 18 }}><FormLabel>異性への抵抗感</FormLabel><SliderInput subLeft="全くない" subRight="かなりある" value={draft.resistance ?? 5} onChange={(v) => setD("resistance", v)} /></div>
+            <div style={{ marginBottom: 18 }}><FormLabel>自己投資額</FormLabel><ChipGroup options={INVEST} value={draft.invest || ""} onChange={(v) => setD("invest", v as string)} small /></div>
+            <div style={{ marginBottom: 18 }}><FormLabel>短所</FormLabel><ChipGroup options={WEAKNESS} value={draft.weakness || ""} onChange={(v) => setD("weakness", v as string)} small /></div>
+            <div style={{ marginBottom: 0 }}><FormLabel>周りの評価</FormLabel><FormInput value={draft.personality || ""} onChange={(v) => setD("personality", v)} /></div>
+          </EditBox>
+        ) : (
+          <><Row label="自己肯定感" value={`${user.esteem ?? 5} / 10`} /><Row label="異性への抵抗感" value={`${user.resistance ?? 5} / 10`} /><Row label="自己投資額" value={user.invest} /><Row label="短所" value={user.weakness} /><Row label="周りの評価" value={user.personality} /></>
+        )}
+
+        <SH title="SELF IMPROVEMENT" sid="improve" />
+        {editing === "improve" ? (
+          <EditBox>
+            <div style={{ marginBottom: 18 }}><FormLabel>自分磨きを行った？</FormLabel><ChipGroup options={["はい", "いいえ"]} value={draft.selfImprovement || ""} onChange={(v) => setD("selfImprovement", v as string)} small /></div>
+            {draft.selfImprovement === "はい" && <div style={{ marginBottom: 18 }}><FormLabel>自信が持てた？</FormLabel><ChipGroup options={CONFIDENCE_5} value={draft.improvementConfidence || ""} onChange={(v) => setD("improvementConfidence", v as string)} small /></div>}
+            <div style={{ marginBottom: 0 }}><FormLabel>心理的ハードルの変化</FormLabel><ChipGroup options={BARRIER_CHANGE} value={draft.barrierChange || ""} onChange={(v) => setD("barrierChange", v as string)} small /></div>
+          </EditBox>
+        ) : (
+          <><Row label="自分磨き" value={user.selfImprovement} /><Row label="自信の変化" value={user.improvementConfidence} hide={user.selfImprovement !== "はい"} /><Row label="ハードル変化" value={user.barrierChange} /></>
+        )}
+
+        <SH title="TOKUSHIMA LIFE" sid="tokushima" />
+        {editing === "tokushima" ? (
+          <EditBox>
+            <div style={{ marginBottom: 18 }}><FormLabel>徳島に住み続けたい？</FormLabel><ChipGroup options={["ぜひ住みたい", "条件次第で", "どちらとも", "県外に出たい"]} value={draft.stayTokushima || ""} onChange={(v) => setD("stayTokushima", v as string)} accent small /></div>
+            <div style={{ marginBottom: 18 }}><FormLabel>県外へ出たい理由</FormLabel><ChipGroup options={LEAVE_REASONS} value={draft.leaveReason || ""} onChange={(v) => setD("leaveReason", v as string)} small /></div>
+            {isTeen && <div style={{ marginBottom: 18, background: "rgba(200,169,110,0.05)", padding: 12, border: `1px solid ${goldBorder}` }}><p style={{ fontSize: 9, color: gold, marginBottom: 8, letterSpacing: "0.1em" }}>10代の方への質問</p><FormLabel>これがあれば残る要素（複数可）</FormLabel><ChipGroup options={STAY_CONDITIONS} value={draft.stayConditions || []} onChange={(v) => setD("stayConditions", v as string[])} multi accent small /></div>}
+            <div style={{ marginBottom: 18 }}><FormLabel>徳島で家を購入したい？</FormLabel><ChipGroup options={["ぜひしたい", "条件が合えば", "あまり考えていない", "購入しない"]} value={draft.buyHouse || ""} onChange={(v) => setD("buyHouse", v as string)} small /></div>
+            <div style={{ marginBottom: 18 }}><FormLabel>住居の条件（複数可）</FormLabel><ChipGroup options={HOUSING_CONDS} value={draft.housingConditions || []} onChange={(v) => setD("housingConditions", v as string[])} multi small /></div>
+            <div style={{ marginBottom: 0 }}><FormLabel>会社の支援で定住意向は上がる？</FormLabel><ChipGroup options={COMPANY_SUPPORT} value={draft.companySupport || ""} onChange={(v) => setD("companySupport", v as string)} small /></div>
+          </EditBox>
+        ) : (
+          <><Row label="定住意向" value={user.stayTokushima} /><Row label="県外理由" value={user.leaveReason} /><Row label="残る条件" value={(user.stayConditions || []).join("、") || undefined} hide={user.age !== "10代"} /><Row label="家購入意向" value={user.buyHouse} /><Row label="住居の条件" value={(user.housingConditions || []).join("、") || undefined} /><Row label="企業支援効果" value={user.companySupport} /></>
         )}
       </div>
       <BottomNav active="profile" onNav={onNav} />
