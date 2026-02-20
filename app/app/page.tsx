@@ -128,6 +128,12 @@ function AppPageContent() {
   if (screen === "home") {
     const conns = db.connections.filter((c) => c.from === user.id || c.to === user.id).length;
     const received = db.ratings.filter((r) => r.to === user.id);
+    const favCount = (db.favorites || []).filter((f) => f.userId === user.id).length;
+    const connectedIds = db.connections
+      .filter((c) => c.from === user.id || c.to === user.id)
+      .map((c) => (c.from === user.id ? c.to : c.from));
+    const ratedIds = db.ratings.filter((r) => r.from === user.id).map((r) => r.to);
+    const unratedCount = connectedIds.filter((id) => !ratedIds.includes(id)).length;
     return (
       <div style={{ minHeight: "100vh", background: "#000", paddingBottom: 80, color: "#fff" }}>
         <div style={{ padding: "48px 24px 32px", maxWidth: 480, margin: "0 auto" }}>
@@ -139,10 +145,10 @@ function AppPageContent() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(2,1fr)",
+            gridTemplateColumns: "repeat(3,1fr)",
             gap: 1,
             background: faintLine2,
-            margin: "0 24px 32px",
+            margin: "0 24px 24px",
             maxWidth: "calc(480px - 48px)",
             marginLeft: "auto",
             marginRight: "auto",
@@ -150,14 +156,36 @@ function AppPageContent() {
         >
           {[
             { num: conns, label: "TALKS" },
-            { num: received.length, label: "LIKES", isGold: true },
+            { num: received.length, label: "IMPRESSIONS", isGold: true },
+            { num: favCount, label: "FAVORITES", isGold: true },
           ].map((s, i) => (
-            <div key={i} style={{ background: "#000", padding: "22px 16px", textAlign: "center" }}>
-              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 35, fontWeight: 300, color: s.isGold ? gold : "#fff", lineHeight: 1, marginBottom: 10 }}>{s.num}</div>
-              <div style={{ fontSize: 9, letterSpacing: "0.25em", color: "#666" }}>{s.label}</div>
+            <div key={i} style={{ background: "#000", padding: "22px 12px", textAlign: "center" }}>
+              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 30, fontWeight: 300, color: s.isGold ? gold : "#fff", lineHeight: 1, marginBottom: 10 }}>{s.num}</div>
+              <div style={{ fontSize: 8, letterSpacing: "0.25em", color: "#666" }}>{s.label}</div>
             </div>
           ))}
         </div>
+        {unratedCount > 0 && (
+          <button
+            onClick={() => nav("history")}
+            style={{
+              width: "100%",
+              padding: "16px 20px",
+              background: "rgba(200,169,110,0.06)",
+              border: "1px solid rgba(200,169,110,0.15)",
+              cursor: "pointer",
+              margin: "0 24px 24px",
+              maxWidth: "calc(480px - 48px)",
+              marginLeft: "auto",
+              marginRight: "auto",
+              display: "block",
+            }}
+          >
+            <span style={{ fontSize: 12, color: gold, letterSpacing: "0.05em" }}>
+              ✧ 印象が未記録の人が{unratedCount}人います
+            </span>
+          </button>
+        )}
         <div style={{ padding: "0 24px", maxWidth: 480, margin: "0 auto" }}>
           <button
             onClick={() => nav("card")}
@@ -170,7 +198,7 @@ function AppPageContent() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {[
               { id: "scan", icon: "⊡", title: "スキャン", desc: "相手のコードを\n読み取る" },
-              { id: "history", icon: "◇", title: "履歴", desc: "接続した人を\n確認する" },
+              { id: "history", icon: "◇", title: "履歴 & お気に入り", desc: "接続した人を\n確認する" },
             ].map((a) => (
               <button
                 key={a.id}
@@ -182,6 +210,45 @@ function AppPageContent() {
                 <div style={{ fontSize: 11, color: "#666", lineHeight: 1.8, whiteSpace: "pre-line" }}>{a.desc}</div>
               </button>
             ))}
+          </div>
+          {/* === AFTER EVENT セクション === */}
+          <div style={{ marginTop: 24 }}>
+            <p style={{
+              fontSize: 9,
+              letterSpacing: "0.3em",
+              color: "#555",
+              marginBottom: 12,
+            }}>AFTER EVENT</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <button
+                onClick={() => router.push("/post-survey")}
+                style={{
+                  background: "transparent",
+                  border: "1px solid rgba(200,169,110,0.2)",
+                  padding: "28px 20px",
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
+                <span style={{ fontSize: 24, display: "block", marginBottom: 14, color: gold }}>◆</span>
+                <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 16, fontWeight: 300, color: "#fff", marginBottom: 6 }}>アンケート</div>
+                <div style={{ fontSize: 11, color: "#666", lineHeight: 1.8, whiteSpace: "pre-line" }}>{"イベント後の\n変化を回答"}</div>
+              </button>
+              <button
+                onClick={() => router.push("/followup")}
+                style={{
+                  background: "transparent",
+                  border: "1px solid rgba(200,169,110,0.2)",
+                  padding: "28px 20px",
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
+                <span style={{ fontSize: 24, display: "block", marginBottom: 14, color: gold }}>♡</span>
+                <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 16, fontWeight: 300, color: "#fff", marginBottom: 6 }}>フォローアップ</div>
+                <div style={{ fontSize: 11, color: "#666", lineHeight: 1.8, whiteSpace: "pre-line" }}>{"連絡先交換を\nリクエスト"}</div>
+              </button>
+            </div>
           </div>
         </div>
         <BottomNav active="home" onNav={nav} />

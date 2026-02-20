@@ -3,7 +3,7 @@
 
 -- 参加者
 CREATE TABLE IF NOT EXISTS koifes_users (
-  id TEXT PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code TEXT UNIQUE NOT NULL,
   nickname TEXT,
   gender TEXT,
@@ -36,9 +36,9 @@ CREATE TABLE IF NOT EXISTS koifes_users (
 
 -- 評価
 CREATE TABLE IF NOT EXISTS koifes_ratings (
-  id TEXT PRIMARY KEY,
-  from_user_id TEXT NOT NULL REFERENCES koifes_users(id) ON DELETE CASCADE,
-  to_user_id TEXT NOT NULL REFERENCES koifes_users(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  from_user_id UUID NOT NULL REFERENCES koifes_users(id) ON DELETE CASCADE,
+  to_user_id UUID NOT NULL REFERENCES koifes_users(id) ON DELETE CASCADE,
   impression INTEGER NOT NULL,
   ease INTEGER NOT NULL,
   again TEXT,
@@ -48,9 +48,9 @@ CREATE TABLE IF NOT EXISTS koifes_ratings (
 
 -- 接続（マッチング）
 CREATE TABLE IF NOT EXISTS koifes_connections (
-  id TEXT PRIMARY KEY,
-  from_user_id TEXT NOT NULL REFERENCES koifes_users(id) ON DELETE CASCADE,
-  to_user_id TEXT NOT NULL REFERENCES koifes_users(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  from_user_id UUID NOT NULL REFERENCES koifes_users(id) ON DELETE CASCADE,
+  to_user_id UUID NOT NULL REFERENCES koifes_users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(from_user_id, to_user_id)
 );

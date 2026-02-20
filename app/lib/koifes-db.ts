@@ -56,6 +56,7 @@ export type KoifesDb = {
   users: KoifesUser[];
   ratings: KoifesRating[];
   connections: KoifesConnection[];
+  favorites?: { userId: string }[];
 };
 
 function toDbUser(row: Record<string, unknown>): KoifesUser {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { addUser, load, saveSession, type KoifesUser } from "@/app/lib/koifes-db";
 import {
@@ -72,9 +72,21 @@ export default function RegisterPage() {
   const [form, setForm] = useState(INIT_FORM);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [completedCode, setCompletedCode] = useState<string | null>(null);
   const set = (k: keyof typeof form, v: string | number | string[]) =>
     setForm((p) => ({ ...p, [k]: v }));
   const isTeen = form.age === "10代";
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (step > 0 && !completedCode) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [step, completedCode]);
 
   const validate = () => {
     if (step === 0 && (!form.nickname || !form.gender || !form.age || !form.job || !form.family))
@@ -132,9 +144,12 @@ export default function RegisterPage() {
       }
 
       saveSession(newId);
-      console.log("[register] セッション保存完了, redirect to /app");
-      router.push("/app?screen=card");
-      router.refresh();
+      console.log("[register] セッション保存完了, 完了画面を3秒表示");
+      setCompletedCode(newUser.code);
+      setTimeout(() => {
+        router.push("/app?screen=card");
+        router.refresh();
+      }, 3000);
     } catch (err) {
       const message = err instanceof Error ? err.message : "登録に失敗しました";
       setError(message);
@@ -206,6 +221,57 @@ export default function RegisterPage() {
       <div style={{ marginBottom: 32 }}><FormLabel>会社が「美容や出会い」を支援してくれるなら、その会社への愛着や定住意向は上がりますか？</FormLabel><ChipGroup options={COMPANY_SUPPORT} value={form.companySupport} onChange={(v) => set("companySupport", v as string)} /></div>
     </div>,
   ];
+
+  if (completedCode) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, color: "#fff" }}>
+        <div
+          style={{
+            width: 72,
+            height: 72,
+            border: "2px solid #c8a96e",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            animation: "checkPop 0.5s ease",
+            marginBottom: 24,
+          }}
+        >
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c8a96e" strokeWidth="2.5">
+            <path d="M5 12l5 5L20 7" />
+          </svg>
+        </div>
+        <p style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 22, fontWeight: 300, marginBottom: 32 }}>
+          プロフィールが完成しました
+        </p>
+        <div
+          style={{
+            background: "rgba(200,169,110,0.06)",
+            border: "1px solid rgba(200,169,110,0.2)",
+            padding: "28px 48px",
+            marginBottom: 24,
+          }}
+        >
+          <p style={{ fontSize: 10, letterSpacing: "0.3em", color: "#999", marginBottom: 12 }}>あなたのコード</p>
+          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 48, letterSpacing: "0.35em", color: "#c8a96e" }}>
+            {completedCode}
+          </p>
+        </div>
+        <p style={{ fontSize: 11, color: "#666", marginBottom: 24, textAlign: "center" }}>
+          このコードは再ログインに使います<br />スクリーンショットを撮っておくと安心です
+        </p>
+        <p
+          style={{
+            fontSize: 10,
+            color: "#444",
+            animation: "fadeIn 0.6s ease 1.5s both",
+          }}
+        >
+          まもなくアプリに移動します...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "#000", display: "flex", flexDirection: "column", color: "#fff" }}>

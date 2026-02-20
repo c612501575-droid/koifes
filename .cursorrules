@@ -1,0 +1,32 @@
+# Koi Fes — プロジェクトコンテキスト
+
+## プロジェクト概要
+徳島で開催される婚活・交流イベント「恋フェス」のWebアプリ。
+参加者がダウンロード不要（PWA）で利用でき、行政にも提供可能な統計データを収集する。
+
+## 技術スタック
+- Next.js (App Router) + React
+- TypeScript
+- Supabase (PostgreSQL + Auth + Realtime)
+- html5-qrcode（QRスキャン）
+- qrcode.react（QR生成）
+- デプロイ: Vercel
+
+## デザインルール（厳守）
+- カラー: 黒(#000)ベース × ゴールド(#c8a96e)アクセント × 白(#fff)テキスト
+- フォント: Cormorant Garamond（英字見出し・イタリック）、Noto Serif JP（日本語見出し）、Noto Sans JP（本文）
+- 全画面: background: #000, color: #fff
+- ボタン: 背景#fff or #c8a96e、テキスト#000
+- ボーダー: rgba(255,255,255,0.08) ～ 0.15
+- アニメーション: 上品で控えめ。slideUp, fadeIn, cardReveal を使用
+- 角丸: 使わない（すべてシャープな四角）
+- 余白: 十分に取る。詰め込まない
+- 1画面1アクション原則
+
+## コーディング規約
+- インラインstyle（style={{}}）を使用
+- "use client" をクライアントコンポーネントの先頭に
+- 定数は koifes-constants.ts に集約
+- DB操作は koifes-db.ts 経由
+- 日本語のUI、英語のコード変数名
+- UIの「評価」は「印象」に言い換える（心理的安全性のため）
