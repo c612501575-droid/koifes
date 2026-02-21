@@ -38,7 +38,7 @@ export default function SplashScreen() {
             style={{
               fontFamily: "'Cormorant Garamond', serif",
               fontSize: "clamp(58px,15vw,90px)",
-              fontWeight: 300,
+              fontWeight: 400,
               fontStyle: "italic",
               color: "#fff",
               letterSpacing: "0.04em",
@@ -52,9 +52,9 @@ export default function SplashScreen() {
         <div style={{ overflow: "hidden" }}>
           <span
             style={{
-              fontFamily: "'Noto Serif JP', serif",
+              fontFamily: "'Noto Sans JP', sans-serif",
               fontSize: "clamp(12px,3.2vw,20px)",
-              fontWeight: 200,
+              fontWeight: 400,
               letterSpacing: "0.35em",
               color: "rgba(255,255,255,0.9)",
               display: "block",
@@ -68,9 +68,9 @@ export default function SplashScreen() {
         <div style={{ overflow: "hidden", marginTop: 16 }}>
           <span
             style={{
-              fontFamily: "'Noto Serif JP', serif",
+              fontFamily: "'Noto Sans JP', sans-serif",
               fontSize: "clamp(14px,3vw,18px)",
-              fontWeight: 200,
+              fontWeight: 400,
               letterSpacing: "0.3em",
               color: "rgba(255,255,255,0.7)",
               display: "block",
@@ -93,7 +93,7 @@ export default function SplashScreen() {
           style={{
             fontFamily: "'Noto Sans JP', sans-serif",
             fontSize: 18,
-            fontWeight: 300,
+            fontWeight: 400,
             letterSpacing: "0.35em",
             color: "rgba(255,255,255,0.7)",
             background: "transparent",
