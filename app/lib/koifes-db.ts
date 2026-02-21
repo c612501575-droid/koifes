@@ -252,10 +252,12 @@ export async function addRating(rating: KoifesRating): Promise<void> {
     again: rating.again != null ? String(rating.again) : null,
     overall: rating.overall,
   };
+  console.log("[koifes-db] addRating payload:", payload);
   const { error } = await supabase.from("koifes_ratings").insert(payload);
   if (error) {
+    console.error("Supabase insert error:", JSON.stringify(error));
     console.error("[koifes-db] addRating failed:", error.message, error.details, { payload });
-    throw new Error(`評価の保存に失敗しました: ${error.message}`);
+    throw error;
   }
 }
 

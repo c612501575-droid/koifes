@@ -168,14 +168,19 @@ export default function AdminPage() {
   };
 
   const downloadCsv = (data: Record<string, unknown>[], filename: string) => {
-    if (!data.length) return;
+    if (!data.length) {
+      alert("ダウンロードできるデータがありません");
+      return;
+    }
     const content = csvString(data);
     const blob = new Blob(["\uFEFF" + content], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `${filename}_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
@@ -262,12 +267,18 @@ export default function AdminPage() {
       { name: "koifes_followups.csv", content: "\uFEFF" + csvString(followups) },
       { name: "koifes_connections.csv", content: "\uFEFF" + csvString(connections) },
     ];
+    if (files.every((f) => !f.content || f.content === "\uFEFF")) {
+      alert("ダウンロードできるデータがありません");
+      return;
+    }
     const blob = createZipBlob(files);
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `koifes_all_data_${new Date().toISOString().slice(0, 10)}.zip`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
