@@ -246,8 +246,8 @@ export async function updateUser(user: KoifesUser): Promise<void> {
 export async function addRating(rating: KoifesRating): Promise<void> {
   const overallScore = Math.round(((rating.impression + rating.ease + (Number(rating.again) || 0)) / 3) * 10) / 10;
   const payload = {
-    from_user_id: rating.from,
-    to_user_id: rating.to,
+    from_user: rating.from,
+    to_user: rating.to,
     impression: rating.impression,
     ease: rating.ease,
     again: rating.again != null ? String(rating.again) : null,
