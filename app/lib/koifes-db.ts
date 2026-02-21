@@ -244,13 +244,14 @@ export async function updateUser(user: KoifesUser): Promise<void> {
 }
 
 export async function addRating(rating: KoifesRating): Promise<void> {
+  const overallScore = Math.round(((rating.impression + rating.ease + (Number(rating.again) || 0)) / 3) * 10) / 10;
   const payload = {
     from_user_id: rating.from,
     to_user_id: rating.to,
     impression: rating.impression,
     ease: rating.ease,
     again: rating.again != null ? String(rating.again) : null,
-    overall: rating.overall,
+    overall: overallScore,
   };
   console.log("[koifes-db] addRating payload:", payload);
   const { error } = await supabase.from("koifes_ratings").insert(payload);
