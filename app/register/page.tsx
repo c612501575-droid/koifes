@@ -18,7 +18,6 @@ import {
   VALUES,
   EVENT_EXP,
   INVEST,
-  WEAKNESS,
   CONFIDENCE_5,
   BARRIER_CHANGE,
   LEAVE_REASONS,
@@ -104,20 +103,25 @@ const DEALBREAKER_OPTIONS = [
 
 const STRENGTH_OPTIONS = [
   "明るい",
-  "おとなしい",
   "面白い",
-  "まじめ",
   "優しい",
-  "クール",
-  "天然",
-  "しっかり者",
-  "ムードメーカー",
-  "マイペース",
+  "まじめ",
   "聞き上手",
   "よく笑う",
   "気配り上手",
   "ポジティブ",
   "行動力がある",
+  "しっかり者",
+  "ムードメーカー",
+  "天然",
+  "クール",
+  "マイペース",
+  "おとなしい",
+  "素直",
+  "包容力がある",
+  "芯が強い",
+  "社交的",
+  "努力家",
 ];
 
 export default function RegisterPage() {
@@ -192,7 +196,7 @@ export default function RegisterPage() {
       esteem: form.esteem,
       resistance: form.resistance,
       invest: form.invest,
-      weakness: form.weakness,
+      weakness: undefined,
       personality: form.strengths.join(","),
       selfImprovement: form.selfImprovement,
       improvementConfidence: form.improvementConfidence,
@@ -349,8 +353,7 @@ export default function RegisterPage() {
       <div style={{ marginBottom: 32 }}><FormLabel>自己肯定感スコア</FormLabel><SliderInput subLeft="低い" subRight="高い" value={form.esteem} onChange={(v) => set("esteem", v)} /></div>
       <div style={{ marginBottom: 32 }}><FormLabel>異性への抵抗感</FormLabel><SliderInput subLeft="全くない" subRight="かなりある" value={form.resistance} onChange={(v) => set("resistance", v)} /></div>
       <div style={{ marginBottom: 32 }}><FormLabel>自己投資額（月）</FormLabel><ChipGroup options={INVEST} value={form.invest} onChange={(v) => set("invest", v as string)} /></div>
-      <div style={{ marginBottom: 32 }}><FormLabel>自分の短所</FormLabel><ChipGroup options={WEAKNESS} value={form.weakness} onChange={(v) => set("weakness", v as string)} /></div>
-      <div style={{ marginBottom: 32 }}><FormLabel>自分の長所・周りからの評価（複数選択可）</FormLabel><ChipGroup options={STRENGTH_OPTIONS} value={form.strengths} onChange={(v) => set("strengths", v as string[])} multi small /></div>
+      <div style={{ marginBottom: 32 }}><FormLabel>自分の長所（複数選択可）</FormLabel><ChipGroup options={STRENGTH_OPTIONS} value={form.strengths} onChange={(v) => set("strengths", v as string[])} multi small /></div>
     </div>,
     // Step 4
     <div key={3}>
