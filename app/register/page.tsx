@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { addUser, load, saveSession, type KoifesUser } from "@/app/lib/koifes-db";
 import {
@@ -8,7 +8,6 @@ import {
   AGE_NUMBERS,
   JOBS,
   FAMILY,
-  SIBLINGS,
   LIVING_WITH_FAMILY,
   INCOME,
   MARRIAGE,
@@ -37,7 +36,6 @@ import {
   FormInput,
   Header,
   Progress,
-  BtnPrimary,
   InfoBox,
 } from "@/app/components/koifes/ui";
 
@@ -60,12 +58,13 @@ const INIT_FORM = {
   childrenByWhen: "",
   hobbies: [] as string[],
   values: [] as string[],
+  dealbreakers: [] as string[],
   eventExp: "",
   esteem: 5,
   resistance: 5,
   invest: "",
   weakness: "",
-  personality: "",
+  strengths: [] as string[],
   selfImprovement: "",
   improvementConfidence: "",
   barrierChange: "",
@@ -75,16 +74,62 @@ const INIT_FORM = {
   buyHouse: "",
   housingConditions: [] as string[],
   companySupport: "",
+  unmarriedReasons: [] as string[],
 };
+
+const UNMARRIED_REASONS = [
+  "そもそも出会いがない",
+  "お金に余裕がない",
+  "いい人がいない",
+  "結婚したくてもできない",
+  "仕事が忙しい",
+  "自由でいたい",
+  "その他",
+];
+
+const DEALBREAKER_OPTIONS = [
+  "顔・見た目",
+  "性格の相性",
+  "価値観が合う",
+  "一緒にいて楽",
+  "経済力",
+  "誠実さ",
+  "共通の趣味",
+  "フィーリング",
+  "尊敬できる",
+  "家族を大切にする",
+  "将来のビジョン",
+  "笑いのツボが同じ",
+];
+
+const STRENGTH_OPTIONS = [
+  "明るい",
+  "おとなしい",
+  "面白い",
+  "まじめ",
+  "優しい",
+  "クール",
+  "天然",
+  "しっかり者",
+  "ムードメーカー",
+  "マイペース",
+  "聞き上手",
+  "よく笑う",
+  "気配り上手",
+  "ポジティブ",
+  "行動力がある",
+];
 
 export default function RegisterPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [form, setForm] = useState(INIT_FORM);
   const [agreed, setAgreed] = useState(false);
+  const [agreedWarn, setAgreedWarn] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [completedCode, setCompletedCode] = useState<string | null>(null);
+  const agreedRef = useRef<HTMLDivElement | null>(null);
   const set = (k: keyof typeof form, v: string | number | string[]) =>
     setForm((p) => ({ ...p, [k]: v }));
   const isTeen = form.age === "10代";
@@ -142,12 +187,13 @@ export default function RegisterPage() {
       childrenByWhen: form.childrenByWhen || undefined,
       hobbies: form.hobbies,
       values: form.values,
+      dealbreakers: form.dealbreakers,
       eventExp: form.eventExp,
       esteem: form.esteem,
       resistance: form.resistance,
       invest: form.invest,
       weakness: form.weakness,
-      personality: form.personality,
+      personality: form.strengths.join(","),
       selfImprovement: form.selfImprovement,
       improvementConfidence: form.improvementConfidence,
       barrierChange: form.barrierChange,
@@ -157,6 +203,7 @@ export default function RegisterPage() {
       buyHouse: form.buyHouse,
       housingConditions: form.housingConditions,
       companySupport: form.companySupport,
+      unmarriedReasons: form.unmarriedReasons,
       createdAt: new Date().toISOString(),
     };
     try {
@@ -193,17 +240,36 @@ export default function RegisterPage() {
       <p style={{ fontSize: 11, letterSpacing: "0.4em", color: "#c8a96e", marginBottom: 8 }}>STEP 01</p>
       <h2 style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 22, fontWeight: 500, lineHeight: 1.6, marginBottom: 12 }}>基本情報を<br />入力してください</h2>
       <p style={{ fontSize: 11, color: "#666", marginBottom: 32, letterSpacing: "0.05em" }}>全5ステップ・約3分で完了します</p>
-      <div style={{ marginBottom: 32, background: "rgba(200,169,110,0.06)", border: "1px solid rgba(200,169,110,0.15)", borderRadius: 8, padding: 16 }}>
-        <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
+      <div
+        ref={agreedRef}
+        style={{
+          marginBottom: 24,
+          background: agreed ? "rgba(200,169,110,0.08)" : "rgba(255,100,100,0.05)",
+          border: agreed ? "2px solid rgba(200,169,110,0.3)" : "2px solid rgba(255,100,100,0.3)",
+          borderRadius: 12,
+          padding: 20,
+          transition: "all 0.3s",
+          boxShadow: agreedWarn ? "0 0 0 4px rgba(255,80,80,0.25)" : "none",
+        }}
+      >
+        <label style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer" }}>
           <input
             type="checkbox"
             checked={agreed}
-            onChange={(e) => setAgreed(e.target.checked)}
-            style={{ marginTop: 4, accentColor: "#c8a96e" }}
+            onChange={(e) => {
+              setAgreed(e.target.checked);
+              if (e.target.checked) setAgreedWarn(false);
+            }}
+            style={{ width: 22, height: 22, marginTop: 2, accentColor: "#c8a96e", flexShrink: 0 }}
           />
-          <span style={{ fontSize: 12, color: "#999", lineHeight: 1.8 }}>
-            入力いただいた情報は、イベント中のプロフィール交換および匿名統計データとして地域づくりに活用されます。イベント終了後、個人を特定できる情報は適切に管理されます。
-          </span>
+          <div>
+            <p style={{ fontSize: 14, fontWeight: 700, color: agreed ? "#c8a96e" : "#fff", margin: "0 0 8px" }}>
+              上記に同意して始める
+            </p>
+            <p style={{ fontSize: 11, color: "#999", lineHeight: 1.8, margin: 0 }}>
+              入力いただいた情報は、イベント中のプロフィール交換および匿名統計データとして地域づくりに活用されます。イベント終了後、個人を特定できる情報は適切に管理されます。
+            </p>
+          </div>
         </label>
       </div>
       <div style={{ marginBottom: 32 }}><FormLabel required>フルネーム</FormLabel><FormInput value={form.fullName} onChange={(v) => set("fullName", v)} placeholder="例：山田 太郎" maxLength={30} /></div>
@@ -214,7 +280,6 @@ export default function RegisterPage() {
       <div style={{ marginBottom: 32 }}><FormLabel>身長 (cm)</FormLabel><FormInput value={form.height} onChange={(v) => set("height", v)} placeholder="165" type="number" /></div>
       <div style={{ marginBottom: 32 }}><FormLabel required>職業</FormLabel><ChipGroup options={JOBS} value={form.job} onChange={(v) => set("job", v as string)} small /></div>
       <div style={{ marginBottom: 32 }}><FormLabel required>家族構成</FormLabel><ChipGroup options={FAMILY} value={form.family} onChange={(v) => set("family", v as string)} small /></div>
-      <div style={{ marginBottom: 32 }}><FormLabel>兄弟構成</FormLabel><ChipGroup options={SIBLINGS} value={form.siblings} onChange={(v) => set("siblings", v as string)} small /></div>
       <div style={{ marginBottom: 32 }}><FormLabel>家族の有無（同居）</FormLabel><ChipGroup options={LIVING_WITH_FAMILY} value={form.livingWithFamily} onChange={(v) => set("livingWithFamily", v as string)} small /></div>
     </div>,
     // Step 2
@@ -226,6 +291,12 @@ export default function RegisterPage() {
       {["強く望んでいる", "できればしたい"].includes(form.marriage) && (
         <div style={{ marginBottom: 32, marginLeft: 12, paddingLeft: 12, borderLeft: "2px solid rgba(200,169,110,0.3)" }}><FormLabel required>いつまでに？</FormLabel><ChipGroup options={MARRIAGE_BY_WHEN} value={form.marriageByWhen} onChange={(v) => set("marriageByWhen", v as string)} accent small /></div>
       )}
+      {["あまり考えていない", "結婚したくない"].includes(form.marriage) && (
+        <div style={{ marginBottom: 32 }}>
+          <FormLabel>結婚に至っていない理由は？（複数選択可）</FormLabel>
+          <ChipGroup options={UNMARRIED_REASONS} value={form.unmarriedReasons} onChange={(v) => set("unmarriedReasons", v as string[])} multi small />
+        </div>
+      )}
       <div style={{ marginBottom: 32 }}><FormLabel required>子供の希望</FormLabel><ChipGroup options={CHILDREN} value={form.children} onChange={(v) => set("children", v as string)} accent small /></div>
       {form.children === "欲しい" && (
         <div style={{ marginBottom: 32, marginLeft: 12, paddingLeft: 12, borderLeft: "2px solid rgba(200,169,110,0.3)" }}><FormLabel required>いつまでに？</FormLabel><ChipGroup options={CHILDREN_BY_WHEN} value={form.childrenByWhen} onChange={(v) => set("childrenByWhen", v as string)} accent small /></div>
@@ -233,6 +304,43 @@ export default function RegisterPage() {
       <div style={{ marginBottom: 32 }}><FormLabel>趣味（複数選択可）</FormLabel><ChipGroup options={HOBBIES} value={form.hobbies} onChange={(v) => set("hobbies", v as string[])} multi small /></div>
       <div style={{ marginBottom: 32 }}><FormLabel>大事にしている価値観（複数可）</FormLabel><ChipGroup options={VALUES} value={form.values} onChange={(v) => set("values", v as string[])} multi small /></div>
       <div style={{ marginBottom: 32 }}><FormLabel>イベント参加経験</FormLabel><ChipGroup options={EVENT_EXP} value={form.eventExp} onChange={(v) => set("eventExp", v as string)} small /></div>
+      <div style={{ marginBottom: 32 }}>
+        <FormLabel>付き合うときの決め手は？（上位3つを選択）</FormLabel>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {DEALBREAKER_OPTIONS.map((opt) => {
+            const selected = form.dealbreakers.includes(opt);
+            const blocked = !selected && form.dealbreakers.length >= 3;
+            return (
+              <button
+                key={opt}
+                onClick={() => {
+                  if (blocked) return;
+                  if (selected) {
+                    set("dealbreakers", form.dealbreakers.filter((x) => x !== opt));
+                  } else {
+                    set("dealbreakers", [...form.dealbreakers, opt]);
+                  }
+                }}
+                style={{
+                  background: selected ? "#c8a96e" : "transparent",
+                  border: `1px solid ${selected ? "#c8a96e" : blocked ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.15)"}`,
+                  color: selected ? "#000" : blocked ? "#444" : "rgba(255,255,255,0.55)",
+                  fontFamily: "'Noto Sans JP', sans-serif",
+                  fontSize: 12,
+                  fontWeight: 400,
+                  padding: "7px 14px",
+                  cursor: blocked ? "not-allowed" : "pointer",
+                  transition: "all 0.25s ease",
+                  letterSpacing: "0.05em",
+                  lineHeight: 1.4,
+                }}
+              >
+                {opt}
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>,
     // Step 3
     <div key={2}>
@@ -242,7 +350,7 @@ export default function RegisterPage() {
       <div style={{ marginBottom: 32 }}><FormLabel>異性への抵抗感</FormLabel><SliderInput subLeft="全くない" subRight="かなりある" value={form.resistance} onChange={(v) => set("resistance", v)} /></div>
       <div style={{ marginBottom: 32 }}><FormLabel>自己投資額（月）</FormLabel><ChipGroup options={INVEST} value={form.invest} onChange={(v) => set("invest", v as string)} /></div>
       <div style={{ marginBottom: 32 }}><FormLabel>自分の短所</FormLabel><ChipGroup options={WEAKNESS} value={form.weakness} onChange={(v) => set("weakness", v as string)} /></div>
-      <div style={{ marginBottom: 32 }}><FormLabel>周りからどんな人と言われますか？</FormLabel><FormInput value={form.personality} onChange={(v) => set("personality", v)} placeholder="例：よく笑う、聞き上手" /></div>
+      <div style={{ marginBottom: 32 }}><FormLabel>自分の長所・周りからの評価（複数選択可）</FormLabel><ChipGroup options={STRENGTH_OPTIONS} value={form.strengths} onChange={(v) => set("strengths", v as string[])} multi small /></div>
     </div>,
     // Step 4
     <div key={3}>
@@ -340,15 +448,38 @@ export default function RegisterPage() {
             {error}
           </div>
         )}
-        <BtnPrimary
+        <div
           onClick={() => {
-            if (!validate()) return;
-            step < TOTAL_STEPS - 1 ? setStep((s) => s + 1) : handleComplete();
+            if (step === 0 && !agreed) {
+              setAgreedWarn(true);
+              agreedRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+              setTimeout(() => setAgreedWarn(false), 700);
+            }
           }}
-          disabled={!validate() || saving}
         >
-          {step < TOTAL_STEPS - 1 ? "次へ進む →" : saving ? "保存中..." : "プロフィールを完成させる"}
-        </BtnPrimary>
+          <button
+            onClick={() => {
+              if (!validate()) return;
+              step < TOTAL_STEPS - 1 ? setStep((s) => s + 1) : handleComplete();
+            }}
+            disabled={!validate() || saving}
+            style={{
+              width: "100%",
+              background: !validate() || saving ? "#222" : "#c8a96e",
+              color: !validate() || saving ? "#555" : "#000",
+              border: !validate() || saving ? "1px solid #333" : "none",
+              fontFamily: "'Noto Sans JP', sans-serif",
+              fontSize: 14,
+              fontWeight: 700,
+              letterSpacing: "0.3em",
+              padding: 18,
+              cursor: !validate() || saving ? "not-allowed" : "pointer",
+              transition: "all 0.3s",
+            }}
+          >
+            {step < TOTAL_STEPS - 1 ? "次へ進む →" : saving ? "保存中..." : "プロフィールを完成させる"}
+          </button>
+        </div>
       </div>
     </div>
   );

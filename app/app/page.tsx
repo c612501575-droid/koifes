@@ -195,14 +195,49 @@ function AppPageContent() {
           </button>
         )}
         <div style={{ padding: "0 24px", maxWidth: 480, margin: "0 auto" }}>
-          <button
-            onClick={() => nav("card")}
-            style={{ width: "100%", background: "#fff", border: "none", padding: "28px 24px", cursor: "pointer", textAlign: "left", marginBottom: 12 }}
-          >
-            <span style={{ fontSize: 26, display: "block", marginBottom: 14, color: "#000" }}>◈</span>
-            <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 18, fontWeight: 400, color: "#000", marginBottom: 6 }}>マイカード</div>
-            <div style={{ fontSize: 12, color: "#666", lineHeight: 1.8 }}>QRコードを表示して相手とつながる</div>
-          </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, margin: "32px 0" }}>
+            <button
+              onClick={() => nav("card")}
+              style={{
+                width: "100%",
+                padding: "22px 20px",
+                background: "linear-gradient(135deg, #c8a96e, #b8943e)",
+                border: "none",
+                borderRadius: 14,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 16,
+              }}
+            >
+              <span style={{ fontSize: 32 }}>📱</span>
+              <div style={{ textAlign: "left" }}>
+                <p style={{ fontSize: 17, fontWeight: 700, color: "#000", margin: 0 }}>QRコードを見せる</p>
+                <p style={{ fontSize: 11, color: "rgba(0,0,0,0.6)", margin: "4px 0 0" }}>相手にスキャンしてもらいましょう</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => nav("scan")}
+              style={{
+                width: "100%",
+                padding: "22px 20px",
+                background: "transparent",
+                border: "2px solid #c8a96e",
+                borderRadius: 14,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 16,
+              }}
+            >
+              <span style={{ fontSize: 32 }}>📷</span>
+              <div style={{ textAlign: "left" }}>
+                <p style={{ fontSize: 17, fontWeight: 700, color: "#c8a96e", margin: 0 }}>QRコードを読み取る</p>
+                <p style={{ fontSize: 11, color: "#888", margin: "4px 0 0" }}>相手のQRをスキャンしましょう</p>
+              </div>
+            </button>
+          </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {[
               { id: "scan", icon: "⊡", title: "スキャン", desc: "相手のコードを\n読み取る" },
@@ -330,7 +365,7 @@ function AppPageContent() {
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
               <div style={{ background: "#fff", padding: 10 }}><QRCode value={user.code || "XXXX"} size={160} /></div>
               <div style={{ marginTop: 18, fontFamily: "'Noto Sans JP', sans-serif", fontSize: 28, fontWeight: 400, letterSpacing: "0.35em" }}>{user.code}</div>
-              <p style={{ fontSize: 12, letterSpacing: "0.1em", color: "#999", marginTop: 16, lineHeight: 1.8, textAlign: "center" }}>
+              <p style={{ fontSize: 13, letterSpacing: "0.1em", color: "#999", marginTop: 16, lineHeight: 1.8, textAlign: "center" }}>
                 このQRコードを相手に見せてください<br />
                 相手がスキャンするとプロフィールが交換されます
               </p>
@@ -373,6 +408,7 @@ function AppPageContent() {
       ["子供の時期", target.childrenByWhen],
       ["趣味", (target.hobbies || []).join("、")],
       ["価値観", (target.values || []).join("、")],
+      ["付き合うときの決め手", (target.dealbreakers || []).join("、")],
       ["参加歴", target.eventExp],
     ].filter(([, v]) => v);
     return (

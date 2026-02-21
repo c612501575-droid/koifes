@@ -22,6 +22,7 @@ export type KoifesUser = {
   childrenByWhen?: string;
   hobbies?: string[];
   values?: string[];
+  dealbreakers?: string[];
   eventExp?: string;
   esteem?: number;
   resistance?: number;
@@ -37,6 +38,7 @@ export type KoifesUser = {
   buyHouse?: string;
   housingConditions?: string[];
   companySupport?: string;
+  unmarriedReasons?: string[];
   createdAt?: string;
 };
 
@@ -92,6 +94,7 @@ function toDbUser(row: Record<string, unknown>): KoifesUser {
     childrenByWhen: row.children_by_when as string,
     hobbies: (row.hobbies as string[]) || [],
     values: (row.values as string[]) || [],
+    dealbreakers: (row.dealbreakers as string[]) || [],
     eventExp: row.event_exp as string,
     esteem: row.esteem as number,
     resistance: row.resistance as number,
@@ -107,6 +110,7 @@ function toDbUser(row: Record<string, unknown>): KoifesUser {
     buyHouse: row.buy_house as string,
     housingConditions: (row.housing_conditions as string[]) || [],
     companySupport: row.company_support as string,
+    unmarriedReasons: (row.unmarried_reasons as string[]) || [],
     createdAt: row.created_at as string,
   };
 }
@@ -158,6 +162,7 @@ function toRowUser(u: KoifesUser): Record<string, unknown> {
     children_by_when: u.childrenByWhen,
     hobbies: u.hobbies || [],
     values: u.values || [],
+    dealbreakers: u.dealbreakers || [],
     event_exp: u.eventExp,
     esteem,
     resistance,
@@ -173,6 +178,7 @@ function toRowUser(u: KoifesUser): Record<string, unknown> {
     buy_house: u.buyHouse,
     housing_conditions: u.housingConditions || [],
     company_support: u.companySupport,
+    unmarried_reasons: u.unmarriedReasons || [],
   };
 }
 
