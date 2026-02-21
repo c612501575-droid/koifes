@@ -263,7 +263,7 @@ export default function RegisterPage() {
       <div style={{ marginBottom: 32 }}><FormLabel>県外へ出たい（出た）最大の理由</FormLabel><ChipGroup options={LEAVE_REASONS} value={form.leaveReason} onChange={(v) => set("leaveReason", v as string)} /></div>
       {isTeen && (
         <div style={{ marginBottom: 32, background: "rgba(200,169,110,0.05)", border: `1px solid ${goldBorder}`, padding: 20 }}>
-          <p style={{ fontSize: 10, letterSpacing: "0.15em", color: "#c8a96e", marginBottom: 12 }}>10代の方への質問</p>
+          <p style={{ fontSize: 12, letterSpacing: "0.15em", color: "#c8a96e", marginBottom: 12 }}>10代の方への質問</p>
           <FormLabel>徳島に「これがあれば残る」という要素は？（複数可）</FormLabel>
           <ChipGroup options={STAY_CONDITIONS} value={form.stayConditions} onChange={(v) => set("stayConditions", v as string[])} multi accent small />
         </div>
@@ -304,7 +304,7 @@ export default function RegisterPage() {
             marginBottom: 24,
           }}
         >
-          <p style={{ fontSize: 10, letterSpacing: "0.3em", color: "#999", marginBottom: 12 }}>あなたのコード</p>
+          <p style={{ fontSize: 12, letterSpacing: "0.3em", color: "#999", marginBottom: 12 }}>あなたのコード</p>
           <p style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 42, letterSpacing: "0.35em", color: "#c8a96e", fontWeight: 500 }}>
             {completedCode}
           </p>
@@ -314,7 +314,7 @@ export default function RegisterPage() {
         </p>
         <p
           style={{
-            fontSize: 10,
+            fontSize: 12,
             color: "#444",
             animation: "fadeIn 0.6s ease 1.5s both",
           }}

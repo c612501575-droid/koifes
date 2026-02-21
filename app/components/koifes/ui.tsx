@@ -251,7 +251,7 @@ export function BtnSecondary({
         border: `1px solid ${h ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.12)"}`,
         fontFamily: "'Noto Sans JP', sans-serif",
         fontSize: 13,
-        fontWeight: 300,
+        fontWeight: 400,
         letterSpacing: "0.2em",
         padding: 14,
         cursor: "pointer",
@@ -301,7 +301,7 @@ export function Header({
             cursor: "pointer",
             fontSize: 20,
             padding: 4,
-            fontFamily: "'Cormorant Garamond', serif",
+            fontFamily: "'Noto Sans JP', sans-serif",
           }}
         >
           ←
@@ -311,10 +311,10 @@ export function Header({
       )}
       <span
         style={{
-          fontFamily: "'Cormorant Garamond', serif",
+          fontFamily: "'Noto Sans JP', sans-serif",
           fontSize: 20,
           fontStyle: "italic",
-          fontWeight: 300,
+          fontWeight: 400,
           letterSpacing: "0.08em",
         }}
       >
@@ -361,7 +361,7 @@ export function Avatar({ char, size = 72, borderColor }: { char?: string; size?:
         alignItems: "center",
         justifyContent: "center",
         fontSize: size * 0.38,
-        fontFamily: "'Cormorant Garamond', serif",
+        fontFamily: "'Noto Sans JP', sans-serif",
         color: gold,
         fontStyle: "italic",
         margin: "0 auto",

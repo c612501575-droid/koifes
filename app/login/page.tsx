@@ -82,10 +82,10 @@ export default function LoginPage() {
         </Link>
         <h2
           style={{
-            fontFamily: "'Cormorant Garamond', serif",
+            fontFamily: "'Noto Sans JP', sans-serif",
             fontSize: 38,
             fontStyle: "italic",
-            fontWeight: 300,
+            fontWeight: 400,
             marginBottom: 12,
           }}
         >
@@ -160,9 +160,9 @@ export default function LoginPage() {
                 border: "none",
                 borderBottom: `1px solid ${error ? "#e55" : focused ? gold : "rgba(255,255,255,0.18)"}`,
                 color: "#fff",
-                fontFamily: "'Cormorant Garamond', serif",
+                fontFamily: "'Noto Sans JP', sans-serif",
                 fontSize: 32,
-                fontWeight: 300,
+                fontWeight: 400,
                 padding: "12px 0",
                 outline: "none",
                 textAlign: "center",

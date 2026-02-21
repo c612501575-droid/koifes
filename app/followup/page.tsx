@@ -113,8 +113,8 @@ export default function FollowupPage() {
     <div style={{ minHeight: "100vh", background: "#000", color: "#fff", paddingBottom: 100 }}>
       <Header title="フォローアップ" onLeft={() => router.push("/app")} />
       <div style={{ padding: 24, maxWidth: 480, margin: "0 auto" }}>
-        <p style={{ fontSize: 10, letterSpacing: "0.3em", color: gold, marginBottom: 8 }}>CONTACT REQUEST</p>
-        <h2 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 20, fontWeight: 300, marginBottom: 24 }}>
+        <p style={{ fontSize: 12, letterSpacing: "0.3em", color: gold, marginBottom: 8 }}>CONTACT REQUEST</p>
+        <h2 style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 20, fontWeight: 400, marginBottom: 24 }}>
           接続した人に連絡先交換をリクエスト
         </h2>
         <p style={{ fontSize: 12, color: "#666", lineHeight: 1.8, marginBottom: 32 }}>
@@ -154,7 +154,7 @@ export default function FollowupPage() {
                         alignItems: "center",
                         justifyContent: "center",
                         fontSize: 20,
-                        fontFamily: "'Cormorant Garamond', serif",
+                        fontFamily: "'Noto Sans JP', sans-serif",
                         color: gold,
                         fontStyle: "italic",
                       }}
@@ -162,7 +162,7 @@ export default function FollowupPage() {
                       {p.nickname?.[0] || "?"}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 15, fontWeight: 300 }}>{p.nickname}</div>
+                      <div style={{ fontSize: 15, fontWeight: 400 }}>{p.nickname}</div>
                       <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>{p.age} · {p.job}</div>
                       {mutual ? (
                         <div style={{ marginTop: 12 }}>
@@ -171,10 +171,10 @@ export default function FollowupPage() {
                           </div>
                           <div style={{ fontSize: 11, color: "#999", marginBottom: 4 }}>相手の希望連絡方法：{mutual.contact_method || "—"}</div>
                           {mutual.message && <div style={{ fontSize: 11, color: "#999", marginBottom: 8 }}>相手からのメッセージ：「{mutual.message}」</div>}
-                          <div style={{ fontSize: 9, color: "#555", marginTop: 8 }}>※ 実際の連絡先の交換は、運営を通じて行われます</div>
+                          <div style={{ fontSize: 12, color: "#555", marginTop: 8 }}>※ 実際の連絡先の交換は、運営を通じて行われます</div>
                         </div>
                       ) : f.want_contact ? (
-                        <div style={{ fontSize: 10, color: gold, marginTop: 6, letterSpacing: "0.1em" }}>
+                        <div style={{ fontSize: 12, color: gold, marginTop: 6, letterSpacing: "0.1em" }}>
                           リクエスト済み {f.contact_method && `（${f.contact_method}）`}
                         </div>
                       ) : null}

@@ -1,0 +1,1 @@
+find app -name "*.tsx" -o -name "*.ts" | head -50 | while read f; do echo "===== $f ====="; cat "$f"; echo ""; done > all_code.txt && find supabase -name "*.sql" | while read f; do echo "===== $f ====="; cat "$f"; echo ""; done >> all_code.txt && echo "Done! $(wc -l < all_code.txt) lines"
