@@ -730,9 +730,24 @@ function RateScreen({
   const [done, setDone] = useState(false);
   const [sub, setSub] = useState(false);
 
-  const SR = ({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) => (
+  const SR = ({
+    label,
+    value,
+    onChange,
+    leftText,
+    rightText,
+    note,
+  }: {
+    label: string;
+    value: number;
+    onChange: (v: number) => void;
+    leftText: string;
+    rightText: string;
+    note?: string;
+  }) => (
     <div style={{ marginBottom: 32 }}>
       <label style={{ display: "block", fontSize: 11, letterSpacing: "0.2em", color: "#999", marginBottom: 14 }}>{label}</label>
+      {note && <p style={{ fontSize: 11, color: "#888", marginTop: -8, marginBottom: 12 }}>{note}</p>}
       <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
         {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
           <button
@@ -744,9 +759,9 @@ function RateScreen({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              border: `1px solid ${n <= value ? gold : "rgba(255,255,255,0.12)"}`,
-              background: n <= value ? gold : "transparent",
-              color: n <= value ? "#000" : "rgba(255,255,255,0.3)",
+              border: `1px solid ${n === value ? gold : "rgba(255,255,255,0.12)"}`,
+              background: n === value ? gold : "transparent",
+              color: n === value ? "#000" : "rgba(255,255,255,0.3)",
               fontFamily: "'Noto Sans JP', sans-serif",
               fontSize: 13,
               cursor: "pointer",
@@ -756,6 +771,10 @@ function RateScreen({
             {n}
           </button>
         ))}
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#666", marginTop: 4 }}>
+        <span>{leftText}</span>
+        <span>{rightText}</span>
       </div>
     </div>
   );
@@ -790,6 +809,11 @@ function RateScreen({
       setTimeout(() => onComplete(), 1800);
     } catch (err) {
       console.error("Rating save error:", err);
+      if (err && typeof err === "object") {
+        try {
+          console.error("Rating save error detail:", JSON.stringify(err));
+        } catch {}
+      }
       setSub(false);
       onToast("保存に失敗しました。もう一度お試しください");
       return;
@@ -820,9 +844,16 @@ function RateScreen({
       </div>
       <InfoBox>✧ この記録は相手には一切表示されません。あなたの印象メモとして、また匿名統計データとして地域づくりに活かされます。</InfoBox>
       <div style={{ flex: 1, padding: "8px 24px 40px", maxWidth: 480, margin: "0 auto", width: "100%" }}>
-        <SR label="見た目" value={imp} onChange={setImp} />
-        <SR label="話しやすさ" value={ease} onChange={setEase} />
-        <SR label="ステータス" value={status} onChange={setStatus} />
+        <SR label="見た目" value={imp} onChange={setImp} leftText="低い" rightText="高い" />
+        <SR label="話しやすさ" value={ease} onChange={setEase} leftText="話しにくい" rightText="話しやすい" />
+        <SR
+          label="ステータス"
+          value={status}
+          onChange={setStatus}
+          leftText="低い"
+          rightText="高い"
+          note="（職業・年収・社会的立場の印象）"
+        />
       </div>
       <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(to top, #000 60%, transparent)", padding: "32px 24px 36px" }}>
         <BtnPrimary onClick={submit} disabled={sub || !imp || !ease || !status}>{sub ? "保存中..." : "保存する"}</BtnPrimary>
