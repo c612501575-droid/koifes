@@ -244,16 +244,17 @@ export async function updateUser(user: KoifesUser): Promise<void> {
 }
 
 export async function addRating(rating: KoifesRating): Promise<void> {
-  const { error } = await supabase.from("koifes_ratings").insert({
+  const payload = {
     from_user_id: rating.from,
     to_user_id: rating.to,
     impression: rating.impression,
     ease: rating.ease,
-    again: rating.again,
+    again: rating.again != null ? String(rating.again) : null,
     overall: rating.overall,
-  });
+  };
+  const { error } = await supabase.from("koifes_ratings").insert(payload);
   if (error) {
-    console.error("[koifes-db] addRating failed:", error.message, error.details);
+    console.error("[koifes-db] addRating failed:", error.message, error.details, { payload });
     throw new Error(`評価の保存に失敗しました: ${error.message}`);
   }
 }

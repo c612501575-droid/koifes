@@ -764,6 +764,7 @@ function RateScreen({
     if (!imp || !ease || !status) return;
     setSub(true);
     try {
+      console.log("Saving rating:", { impression: imp, ease, status });
       const ov = Math.round(((imp + ease + status) / 3) * 10) / 10;
       await addRating({
         id: uid(),
@@ -788,9 +789,9 @@ function RateScreen({
       setDone(true);
       setTimeout(() => onComplete(), 1800);
     } catch (err) {
-      console.error("Rating error:", err);
+      console.error("Rating save error:", err);
       setSub(false);
-      onToast("送信に失敗しました。もう一度お試しください");
+      onToast("保存に失敗しました。もう一度お試しください");
       return;
     }
   };
@@ -824,7 +825,7 @@ function RateScreen({
         <SR label="ステータス" value={status} onChange={setStatus} />
       </div>
       <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(to top, #000 60%, transparent)", padding: "32px 24px 36px" }}>
-        <BtnPrimary onClick={submit} disabled={sub || !imp || !ease || !status}>{sub ? "送信中..." : "評価を送信する"}</BtnPrimary>
+        <BtnPrimary onClick={submit} disabled={sub || !imp || !ease || !status}>{sub ? "保存中..." : "保存する"}</BtnPrimary>
       </div>
     </div>
   );
