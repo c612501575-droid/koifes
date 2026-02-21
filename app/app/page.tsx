@@ -146,8 +146,8 @@ function AppPageContent() {
       <div style={{ minHeight: "100vh", background: "#000", paddingBottom: 80, color: "#fff" }}>
         <div style={{ padding: "48px 24px 32px", maxWidth: 480, margin: "0 auto" }}>
           <p style={{ fontSize: 11, letterSpacing: "0.35em", color: "#666", marginBottom: 12 }}>WELCOME BACK</p>
-          <h1 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 27, fontWeight: 300, lineHeight: 1.5 }}>
-            {user.nickname}<span style={{ fontSize: 17, color: "#999", fontWeight: 200 }}>さん</span>
+          <h1 style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 27, fontWeight: 400, lineHeight: 1.5 }}>
+            {user.nickname}<span style={{ fontSize: 17, color: "#999", fontWeight: 400 }}>さん</span>
           </h1>
         </div>
         <div
@@ -168,7 +168,7 @@ function AppPageContent() {
             { num: favCount, label: "FAVORITES", isGold: true },
           ].map((s, i) => (
             <div key={i} style={{ background: "#000", padding: "22px 12px", textAlign: "center" }}>
-              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 30, fontWeight: 300, color: s.isGold ? gold : "#fff", lineHeight: 1, marginBottom: 10 }}>{s.num}</div>
+              <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 30, fontWeight: 400, color: s.isGold ? gold : "#fff", lineHeight: 1, marginBottom: 10 }}>{s.num}</div>
               <div style={{ fontSize: 8, letterSpacing: "0.25em", color: "#666" }}>{s.label}</div>
             </div>
           ))}
@@ -200,7 +200,7 @@ function AppPageContent() {
             style={{ width: "100%", background: "#fff", border: "none", padding: "28px 24px", cursor: "pointer", textAlign: "left", marginBottom: 12 }}
           >
             <span style={{ fontSize: 26, display: "block", marginBottom: 14, color: "#000" }}>◈</span>
-            <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 18, fontWeight: 300, color: "#000", marginBottom: 6 }}>マイカード</div>
+            <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 18, fontWeight: 400, color: "#000", marginBottom: 6 }}>マイカード</div>
             <div style={{ fontSize: 12, color: "#666", lineHeight: 1.8 }}>QRコードを表示して相手とつながる</div>
           </button>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -214,7 +214,7 @@ function AppPageContent() {
                 style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.08)", padding: "28px 20px", cursor: "pointer", textAlign: "left" }}
               >
                 <span style={{ fontSize: 24, display: "block", marginBottom: 14, color: gold }}>{a.icon}</span>
-                <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 16, fontWeight: 300, color: "#fff", marginBottom: 6 }}>{a.title}</div>
+                <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 16, fontWeight: 400, color: "#fff", marginBottom: 6 }}>{a.title}</div>
                 <div style={{ fontSize: 11, color: "#666", lineHeight: 1.8, whiteSpace: "pre-line" }}>{a.desc}</div>
               </button>
             ))}
@@ -222,7 +222,7 @@ function AppPageContent() {
           {/* === AFTER EVENT セクション === */}
           <div style={{ marginTop: 24 }}>
             <p style={{
-              fontSize: 9,
+              fontSize: 12,
               letterSpacing: "0.3em",
               color: "#555",
               marginBottom: 12,
@@ -239,7 +239,7 @@ function AppPageContent() {
                 }}
               >
                 <span style={{ fontSize: 24, display: "block", marginBottom: 14, color: gold }}>◆</span>
-                <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 16, fontWeight: 300, color: "#fff", marginBottom: 6 }}>アンケート</div>
+                <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 16, fontWeight: 400, color: "#fff", marginBottom: 6 }}>アンケート</div>
                 <div style={{ fontSize: 11, color: "#666", lineHeight: 1.8, whiteSpace: "pre-line" }}>{"イベント後の\n変化を回答"}</div>
               </button>
               <button
@@ -253,7 +253,7 @@ function AppPageContent() {
                 }}
               >
                 <span style={{ fontSize: 24, display: "block", marginBottom: 14, color: gold }}>♡</span>
-                <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 16, fontWeight: 300, color: "#fff", marginBottom: 6 }}>フォローアップ</div>
+                <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 16, fontWeight: 400, color: "#fff", marginBottom: 6 }}>フォローアップ</div>
                 <div style={{ fontSize: 11, color: "#666", lineHeight: 1.8, whiteSpace: "pre-line" }}>{"連絡先交換を\nリクエスト"}</div>
               </button>
             </div>
@@ -293,7 +293,7 @@ function AppPageContent() {
                   alignItems: "center",
                   justifyContent: "center",
                   fontSize: 27,
-                  fontFamily: "'Cormorant Garamond', serif",
+                  fontFamily: "'Noto Sans JP', sans-serif",
                   color: gold,
                   fontStyle: "italic",
                 }}
@@ -301,7 +301,7 @@ function AppPageContent() {
                 {user.nickname?.[0] || "♡"}
               </div>
               <div>
-                <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 24, fontWeight: 300, marginBottom: 6 }}>{user.nickname}</div>
+                <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 24, fontWeight: 400, marginBottom: 6 }}>{user.nickname}</div>
                 <div style={{ fontSize: 11, letterSpacing: "0.12em", color: "#999", lineHeight: 1.8 }}>{[user.age, user.job, user.height && `${user.height}cm`].filter(Boolean).join(" · ")}</div>
               </div>
             </div>
@@ -312,12 +312,12 @@ function AppPageContent() {
                 { l: "CHILDREN", v: user.children || "—", s: 1 },
               ].map((item, i) => (
                 <div key={i}>
-                  <div style={{ fontSize: 9, letterSpacing: "0.3em", color: "#666", marginBottom: 6 }}>{item.l}</div>
+                  <div style={{ fontSize: 12, letterSpacing: "0.3em", color: "#666", marginBottom: 6 }}>{item.l}</div>
                   <div
                     style={{
-                      fontFamily: (item as { s?: number }).s ? "'Noto Sans JP'" : "'Cormorant Garamond', serif",
+                      fontFamily: (item as { s?: number }).s ? "'Noto Sans JP'" : "'Noto Sans JP', sans-serif",
                       fontSize: (item as { s?: number }).s ? 12 : 22,
-                      fontWeight: 300,
+                      fontWeight: 400,
                       color: (item as { g?: number }).g ? gold : (item as { s?: number }).s ? "#999" : "#fff",
                     }}
                   >
@@ -329,7 +329,7 @@ function AppPageContent() {
             <div style={{ height: 1, background: faintLine, margin: "0 0 28px" }} />
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
               <div style={{ background: "#fff", padding: 10 }}><QRCode value={user.code || "XXXX"} size={160} /></div>
-              <div style={{ marginTop: 18, fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 400, letterSpacing: "0.35em" }}>{user.code}</div>
+              <div style={{ marginTop: 18, fontFamily: "'Noto Sans JP', sans-serif", fontSize: 28, fontWeight: 400, letterSpacing: "0.35em" }}>{user.code}</div>
               <p style={{ fontSize: 12, letterSpacing: "0.1em", color: "#999", marginTop: 16, lineHeight: 1.8, textAlign: "center" }}>
                 このQRコードを相手に見せてください<br />
                 相手がスキャンするとプロフィールが交換されます
@@ -381,7 +381,7 @@ function AppPageContent() {
         <div style={{ padding: "24px 24px 140px", maxWidth: 480, margin: "0 auto", animation: "cardReveal 0.6s ease" }}>
           <div style={{ textAlign: "center", marginBottom: 36 }}>
             <Avatar char={target.nickname?.[0]} size={80} borderColor={goldBorder} />
-            <h2 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 24, fontWeight: 300, marginTop: 16 }}>{target.nickname}</h2>
+            <h2 style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 24, fontWeight: 400, marginTop: 16 }}>{target.nickname}</h2>
             <p style={{ fontSize: 11, letterSpacing: "0.15em", color: "#999", marginTop: 6 }}>{[target.age, target.job, target.height && `${target.height}cm`].filter(Boolean).join(" · ")}</p>
             <button
               onClick={async () => {
@@ -405,7 +405,7 @@ function AppPageContent() {
           {rows.map(([l, v]) => (
             <div key={l as string} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "14px 0", borderBottom: `1px solid ${faintLine2}` }}>
               <span style={{ fontSize: 11, color: "#666", flexShrink: 0 }}>{l}</span>
-              <span style={{ fontSize: 13, textAlign: "right", marginLeft: 16, color: "#ccc", fontWeight: 300 }}>{v}</span>
+              <span style={{ fontSize: 13, textAlign: "right", marginLeft: 16, color: "#ccc", fontWeight: 400 }}>{v}</span>
             </div>
           ))}
         </div>
@@ -419,16 +419,21 @@ function AppPageContent() {
   // RateScreen
   if (screen === "rate" && target) {
     return (
-      <RateScreen
-        target={target}
-        user={user}
-        onComplete={async () => {
-          await refreshDb();
-          setTarget(null);
-          setScreen("home");
-        }}
-        onBack={() => setScreen("viewProfile")}
-      />
+      <>
+        <RateScreen
+          target={target}
+          user={user}
+          onComplete={async () => {
+            await refreshDb();
+            setTarget(null);
+            setScreen("home");
+            showToast("記録しました");
+          }}
+          onBack={() => setScreen("viewProfile")}
+          onToast={showToast}
+        />
+        <Toast msg={toast.msg} show={toast.show} />
+      </>
     );
   }
 
@@ -444,8 +449,8 @@ function AppPageContent() {
       <div style={{ minHeight: "100vh", background: "#000", paddingBottom: 80, color: "#fff" }}>
         <Header title="History" onLeft={() => nav("home")} />
         <div style={{ padding: 24, maxWidth: 480, margin: "0 auto" }}>
-          <p style={{ fontSize: 10, letterSpacing: "0.4em", color: gold, marginBottom: 8 }}>CONNECTIONS</p>
-          <h2 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 20, fontWeight: 300, marginBottom: 12 }}>接続した人：{peers.length}人</h2>
+          <p style={{ fontSize: 12, letterSpacing: "0.4em", color: gold, marginBottom: 8 }}>CONNECTIONS</p>
+          <h2 style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 20, fontWeight: 400, marginBottom: 12 }}>接続した人：{peers.length}人</h2>
           <button
             onClick={() => setHistoryFavoritesOnly((v) => !v)}
             style={{
@@ -490,9 +495,9 @@ function AppPageContent() {
                   cursor: "pointer",
                 }}
               >
-                <div style={{ width: 44, height: 44, border: "1px solid rgba(255,255,255,0.12)", flexShrink: 0, background: "#111", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontFamily: "'Cormorant Garamond', serif", color: gold, fontStyle: "italic" }}>{p.nickname?.[0]}</div>
+                <div style={{ width: 44, height: 44, border: "1px solid rgba(255,255,255,0.12)", flexShrink: 0, background: "#111", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontFamily: "'Noto Sans JP', sans-serif", color: gold, fontStyle: "italic" }}>{p.nickname?.[0]}</div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 300, color: "#fff" }}>{p.nickname}</div>
+                  <div style={{ fontSize: 14, fontWeight: 400, color: "#fff" }}>{p.nickname}</div>
                   <div style={{ fontSize: 11, color: "#666", marginTop: 3 }}>{p.age} · {p.job}</div>
                 </div>
                 {favoriteIds.has(p.id) && <div style={{ color: gold, fontSize: 14, marginLeft: 8 }}>♡</div>}
@@ -685,9 +690,9 @@ function ScanScreen({
                 border: "none",
                 borderBottom: `1px solid ${error ? "#e55" : focused ? gold : "rgba(255,255,255,0.15)"}`,
                 color: "#fff",
-                fontFamily: "'Cormorant Garamond', serif",
+                fontFamily: "'Noto Sans JP', sans-serif",
                 fontSize: 32,
-                fontWeight: 300,
+                fontWeight: 400,
                 padding: "12px 0",
                 outline: "none",
                 textAlign: "center",
@@ -711,15 +716,17 @@ function RateScreen({
   user,
   onComplete,
   onBack,
+  onToast,
 }: {
   target: KoifesUser;
   user: KoifesUser;
   onComplete: () => void;
   onBack: () => void;
+  onToast: (msg: string) => void;
 }) {
   const [imp, setImp] = useState(0);
   const [ease, setEase] = useState(0);
-  const [again, setAgain] = useState("");
+  const [status, setStatus] = useState(0);
   const [done, setDone] = useState(false);
   const [sub, setSub] = useState(false);
 
@@ -740,7 +747,7 @@ function RateScreen({
               border: `1px solid ${n <= value ? gold : "rgba(255,255,255,0.12)"}`,
               background: n <= value ? gold : "transparent",
               color: n <= value ? "#000" : "rgba(255,255,255,0.3)",
-              fontFamily: "'Cormorant Garamond', serif",
+              fontFamily: "'Noto Sans JP', sans-serif",
               fontSize: 13,
               cursor: "pointer",
               transition: "all 0.15s",
@@ -754,31 +761,38 @@ function RateScreen({
   );
 
   const submit = async () => {
-    if (!imp || !ease) return;
+    if (!imp || !ease || !status) return;
     setSub(true);
-    const ov = Math.round((imp + ease) / 2 * 10) / 10;
-    await addRating({
-      id: uid(),
-      from: user.id,
-      to: target.id,
-      impression: imp,
-      ease,
-      again,
-      overall: ov,
-      createdAt: new Date().toISOString(),
-    });
-    const exists = await load();
-    const connExists = exists.connections.find((c) => (c.from === user.id && c.to === target.id) || (c.from === target.id && c.to === user.id));
-    if (!connExists) {
-      await addConnection({
+    try {
+      const ov = Math.round(((imp + ease + status) / 3) * 10) / 10;
+      await addRating({
         id: uid(),
         from: user.id,
         to: target.id,
+        impression: imp,
+        ease,
+        again: String(status),
+        overall: ov,
         createdAt: new Date().toISOString(),
       });
+      const exists = await load();
+      const connExists = exists.connections.find((c) => (c.from === user.id && c.to === target.id) || (c.from === target.id && c.to === user.id));
+      if (!connExists) {
+        await addConnection({
+          id: uid(),
+          from: user.id,
+          to: target.id,
+          createdAt: new Date().toISOString(),
+        });
+      }
+      setDone(true);
+      setTimeout(() => onComplete(), 1800);
+    } catch (err) {
+      console.error("Rating error:", err);
+      setSub(false);
+      onToast("送信に失敗しました。もう一度お試しください");
+      return;
     }
-    setDone(true);
-    setTimeout(() => onComplete(), 1800);
   };
 
   if (done) {
@@ -787,7 +801,7 @@ function RateScreen({
         <div style={{ width: 64, height: 64, border: `2px solid ${gold}`, display: "flex", alignItems: "center", justifyContent: "center", animation: "checkPop 0.5s ease", marginBottom: 24 }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="2.5"><path d="M5 12l5 5L20 7" /></svg>
         </div>
-        <p style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 18, fontWeight: 300 }}>評価を送信しました</p>
+        <p style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 18, fontWeight: 400 }}>評価を送信しました</p>
         <p style={{ fontSize: 11, color: "#666", marginTop: 12, letterSpacing: "0.15em" }}>※ 本人には表示されません</p>
       </div>
     );
@@ -795,25 +809,22 @@ function RateScreen({
 
   return (
     <div style={{ minHeight: "100vh", background: "#000", display: "flex", flexDirection: "column", color: "#fff" }}>
-      <Header title="Review" onLeft={onBack} />
+      <Header title="Impression" onLeft={onBack} />
       <div style={{ display: "flex", alignItems: "center", gap: 16, padding: 24, borderBottom: `1px solid ${faintLine}`, maxWidth: 480, margin: "0 auto", width: "100%" }}>
         <Avatar char={target.nickname?.[0]} size={48} />
         <div>
-          <div style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 18, fontWeight: 300 }}>{target.nickname}</div>
+          <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 18, fontWeight: 400 }}>{target.nickname}</div>
           <div style={{ fontSize: 11, color: "#999", marginTop: 4 }}>{target.age} · {target.job}</div>
         </div>
       </div>
-      <InfoBox>⚠ この評価は相手には表示されません。集計データとして徳島市の少子化対策に活用されます。</InfoBox>
+      <InfoBox>✧ この記録は相手には一切表示されません。あなたの印象メモとして、また匿名統計データとして地域づくりに活かされます。</InfoBox>
       <div style={{ flex: 1, padding: "8px 24px 40px", maxWidth: 480, margin: "0 auto", width: "100%" }}>
-        <SR label="ファーストインプレッション" value={imp} onChange={setImp} />
+        <SR label="見た目" value={imp} onChange={setImp} />
         <SR label="話しやすさ" value={ease} onChange={setEase} />
-        <div style={{ marginBottom: 32 }}>
-          <FormLabel>また話したいか</FormLabel>
-          <ChipGroup options={["ぜひ話したい", "どちらでも", "あまり…"]} value={again} onChange={(v) => setAgain(Array.isArray(v) ? "" : v)} accent />
-        </div>
+        <SR label="ステータス" value={status} onChange={setStatus} />
       </div>
       <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(to top, #000 60%, transparent)", padding: "32px 24px 36px" }}>
-        <BtnPrimary onClick={submit} disabled={sub || !imp || !ease}>{sub ? "送信中..." : "評価を送信する"}</BtnPrimary>
+        <BtnPrimary onClick={submit} disabled={sub || !imp || !ease || !status}>{sub ? "送信中..." : "評価を送信する"}</BtnPrimary>
       </div>
     </div>
   );
@@ -846,7 +857,7 @@ function ProfileScreen({
 
   const SH = ({ title, sid }: { title: string; sid: string }) => (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, marginTop: 32 }}>
-      <span style={{ fontSize: 10, letterSpacing: "0.3em", color: gold }}>{title}</span>
+      <span style={{ fontSize: 12, letterSpacing: "0.3em", color: gold }}>{title}</span>
       {editing !== sid && <EditIcon onClick={() => startEdit(sid)} />}
     </div>
   );
@@ -855,7 +866,7 @@ function ProfileScreen({
     return (
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "12px 0", borderBottom: `1px solid ${faintLine2}` }}>
         <span style={{ fontSize: 11, color: "#555", flexShrink: 0, minWidth: 80 }}>{label}</span>
-        <span style={{ fontSize: 13, color: value ? "#ccc" : "#333", fontWeight: 300, textAlign: "right", marginLeft: 12 }}>{value || "未入力"}</span>
+        <span style={{ fontSize: 13, color: value ? "#ccc" : "#333", fontWeight: 400, textAlign: "right", marginLeft: 12 }}>{value || "未入力"}</span>
       </div>
     );
   };
@@ -877,7 +888,7 @@ function ProfileScreen({
           <Avatar char={user.nickname?.[0]} size={72} borderColor={goldBorder} />
           <h2 style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 22, fontWeight: 500, marginTop: 16 }}>{user.fullName || user.nickname}</h2>
           <p style={{ fontSize: 11, letterSpacing: "0.15em", color: "#666", marginTop: 6 }}>{[user.age, user.job, user.height && `${user.height}cm`].filter(Boolean).join(" · ")}</p>
-          <p style={{ fontSize: 10, letterSpacing: "0.25em", color: "#444", marginTop: 8, fontFamily: "'Noto Sans JP', sans-serif" }}>CODE: {user.code}</p>
+          <p style={{ fontSize: 12, letterSpacing: "0.25em", color: "#444", marginTop: 8, fontFamily: "'Noto Sans JP', sans-serif" }}>CODE: {user.code}</p>
         </div>
 
         <SH title="BASIC INFO" sid="basic" />
