@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { gold } from "@/app/lib/koifes-constants";
 
-const ADMIN_PASSWORD = "koifes2026";
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "";
 const ADMIN_SESSION_KEY = "koifes-admin-auth";
 
 export function setAdminAuth() {
