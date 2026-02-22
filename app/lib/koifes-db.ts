@@ -185,7 +185,7 @@ function toRowUser(u: KoifesUser): Record<string, unknown> {
 export async function load(): Promise<KoifesDb> {
   try {
     const [usersRes, ratingsRes, connectionsRes, favoritesRes] = await Promise.all([
-      supabase.from("koifes_users").select("*"),
+      supabase.from("koifes_users_public").select("*"),
       supabase.from("koifes_ratings").select("*"),
       supabase.from("koifes_connections").select("*"),
       supabase.from("koifes_favorites").select("*"),
