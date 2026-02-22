@@ -13,7 +13,7 @@ import {
   SliderInput,
 } from "@/app/components/koifes/ui";
 
-const STEPS = 3;
+const STEPS = 4;
 
 export default function PostSurveyPage() {
   const router = useRouter();
@@ -34,13 +34,15 @@ export default function PostSurveyPage() {
   const [attendAgain, setAttendAgain] = useState("");
   const [personalityTags, setPersonalityTags] = useState<string[]>([]);
   const [wantOthersEvaluation, setWantOthersEvaluation] = useState("");
+  const [wantContactExchange, setWantContactExchange] = useState("");
+  const [contactTargets, setContactTargets] = useState("");
   const [feedbackText, setFeedbackText] = useState("");
 
   const INTERESTED_COUNT_OPTIONS = ["0人", "1〜2人", "3〜5人", "6人以上"];
   const WANT_GROWTH_OPTIONS = ["とても思った", "少し思った", "あまり思わなかった", "全く思わなかった"];
   const RESISTANCE_CHANGE_OPTIONS = ["かなり減った", "少し減った", "変わらない", "少し増えた"];
   const ATTEND_OPTIONS = ["ぜひ参加したい", "機会があれば", "あまり参加したくない"];
-  const PERSONALITY_TAG_OPTIONS = ["明るい", "おとなしい", "面白い", "まじめ", "優しい", "クール", "天然", "しっかり者", "ムードメーカー", "マイペース"];
+  const PERSONALITY_TAG_OPTIONS = ["明るい", "おとなしい", "面白い", "まじめ", "優しい", "クール", "天然", "しっかり者", "ムードメーカー", "マイペース", "聞き上手", "よく笑う", "気配り上手", "ポジティブ", "社交的", "努力家", "包容力がある", "行動力がある"];
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -67,7 +69,8 @@ export default function PostSurveyPage() {
   const canNext = () => {
     if (step === 1) return true;
     if (step === 2) return !!interestedCount && !!wantGrowth && !!resistanceChange;
-    if (step === 3) return !!attendAgain && personalityTags.length > 0 && !!wantOthersEvaluation;
+    if (step === 3) return !!attendAgain && personalityTags.length > 0;
+    if (step === 4) return !!wantOthersEvaluation && !!wantContactExchange && (wantContactExchange !== "はい" || !!contactTargets.trim());
     return false;
   };
 
@@ -90,6 +93,8 @@ export default function PostSurveyPage() {
           attend_again: attendAgain || null,
           personality_tags: personalityTags.length ? personalityTags : null,
           want_others_evaluation: wantOthersEvaluation ? wantOthersEvaluation === "はい、知りたい" : null,
+          want_contact_exchange: wantContactExchange ? wantContactExchange === "はい" : null,
+          contact_targets: contactTargets || null,
           feedback_text: feedbackText || null,
           free_comment: feedbackText || null,
         },
@@ -160,7 +165,6 @@ export default function PostSurveyPage() {
             <h2 style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 18, fontWeight: 400, marginBottom: 24 }}>フィードバック</h2>
             <div style={{ marginBottom: 20 }}><FormLabel>また参加したいですか？</FormLabel><ChipGroup options={ATTEND_OPTIONS} value={attendAgain} onChange={(v) => setAttendAgain(Array.isArray(v) ? "" : v)} accent small /></div>
             <div style={{ marginBottom: 20 }}><FormLabel>周りからどんな人と呼ばれますか？（複数選択可）</FormLabel><ChipGroup options={PERSONALITY_TAG_OPTIONS} value={personalityTags} onChange={(v) => setPersonalityTags(v as string[])} multi small /></div>
-            <div style={{ marginBottom: 20 }}><FormLabel>あなたに対する他の参加者からの評価を知りたいですか？</FormLabel><ChipGroup options={["はい、知りたい", "いいえ、知りたくない"]} value={wantOthersEvaluation} onChange={(v) => setWantOthersEvaluation(Array.isArray(v) ? "" : v)} accent small /></div>
             <div>
               <FormLabel>イベントへのご意見（自由記述・任意）</FormLabel>
               <textarea
@@ -182,6 +186,61 @@ export default function PostSurveyPage() {
                 }}
               />
             </div>
+          </div>
+        )}
+
+        {step === 4 && (
+          <div>
+            <h2 style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 20, fontWeight: 700, marginBottom: 24 }}>最後に</h2>
+
+            <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>
+              あなたに対する他の参加者からの評価を知りたいですか？
+            </p>
+            <ChipGroup
+              options={["はい、知りたい", "いいえ、知りたくない"]}
+              value={wantOthersEvaluation}
+              onChange={(v) => setWantOthersEvaluation(Array.isArray(v) ? "" : v)}
+              accent
+              small
+            />
+
+            <div style={{ marginTop: 32 }}>
+              <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>
+                今日会話した人の中で、連絡先を交換したい人はいましたか？
+              </p>
+              <ChipGroup
+                options={["はい", "いいえ"]}
+                value={wantContactExchange}
+                onChange={(v) => setWantContactExchange(Array.isArray(v) ? "" : v)}
+                accent
+                small
+              />
+            </div>
+
+            {wantContactExchange === "はい" && (
+              <div style={{ marginTop: 24 }}>
+                <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>
+                  連絡先を交換したい相手のニックネームまたはコード（4桁）を教えてください
+                </p>
+                <textarea
+                  value={contactTargets}
+                  onChange={(e) => setContactTargets(e.target.value)}
+                  placeholder="例：Aさん、B1234（複数可）"
+                  style={{
+                    width: "100%",
+                    minHeight: 80,
+                    padding: 12,
+                    background: "#111",
+                    border: "1px solid #333",
+                    borderRadius: 8,
+                    color: "#fff",
+                    fontSize: 14,
+                    resize: "vertical",
+                    fontFamily: "'Noto Sans JP', sans-serif",
+                  }}
+                />
+              </div>
+            )}
           </div>
         )}
 

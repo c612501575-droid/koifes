@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { gold } from "@/app/lib/koifes-constants";
 
-const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "";
 const ADMIN_SESSION_KEY = "koifes-admin-auth";
 
 export function setAdminAuth() {
@@ -30,15 +29,26 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (password === ADMIN_PASSWORD) {
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        setError("パスワードが正しくありません");
+        return;
+      }
       setAdminAuth();
       router.push("/admin");
       router.refresh();
-    } else {
-      setError("パスワードが正しくありません");
+    } catch {
+      setError("ログインに失敗しました。時間をおいて再度お試しください");
     }
   };
 

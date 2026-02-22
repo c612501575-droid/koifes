@@ -622,21 +622,36 @@ function ScanScreen({
     let mounted = true;
     const initScanner = async () => {
       try {
+        await new Promise((r) => setTimeout(r, 100));
+        if (!mounted) return;
+        console.log("[QR] Scanner starting...");
         const { Html5Qrcode } = await import("html5-qrcode");
         const container = document.getElementById("qr-reader-scan");
         if (!container || !mounted) return;
         const html5QrCode = new Html5Qrcode("qr-reader-scan");
         scannerRef.current = html5QrCode;
+        let cameraId: string | { facingMode: string } = { facingMode: "environment" };
+        try {
+          const cameras = await Html5Qrcode.getCameras();
+          if (cameras && cameras.length > 0) {
+            const backCam = cameras.find((c) => /back|rear|environment|環境/i.test(c.label || ""));
+            cameraId = backCam ? backCam.id : cameras[0].id;
+          }
+        } catch {
+          cameraId = { facingMode: "environment" };
+        }
         await html5QrCode.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 220, height: 220 } },
+          cameraId,
+          { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
           (decodedText) => {
+            console.log("[QR] Scanned:", decodedText);
             if (mounted) resolveCode(decodedText);
           },
           () => {}
         );
         if (mounted) setMode("camera");
       } catch (err) {
+        console.error("[QR] Start error:", err);
         console.warn("[ScanScreen] カメラ利用不可, フォールバック表示:", err);
         if (scannerRef.current) {
           try {
@@ -668,19 +683,17 @@ function ScanScreen({
       <Header title="Scan" onLeft={() => onNav("home")} />
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "24px" }}>
         {(mode === "loading" || mode === "camera") && (
-          <div style={{ position: "relative", width: "100%", maxWidth: 300 }}>
+          <div style={{ position: "relative", width: "100%", maxWidth: 320, minHeight: 280 }}>
             <div
               id="qr-reader-scan"
               style={{
                 width: "100%",
                 marginBottom: 16,
-                minHeight: 200,
-                visibility: mode === "loading" ? "hidden" : "visible",
-                position: mode === "loading" ? "absolute" : "relative",
+                minHeight: 260,
               }}
             />
             {mode === "loading" && (
-              <div style={{ padding: "80px 24px", textAlign: "center" }}>
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#0a0a0a" }}>
                 <p style={{ fontSize: 12, letterSpacing: "0.15em", color: "#999" }}>カメラを起動中...</p>
               </div>
             )}

@@ -131,8 +131,8 @@ function toDbRating(row: Record<string, unknown>): KoifesRating {
 function toDbConnection(row: Record<string, unknown>): KoifesConnection {
   return {
     id: row.id as string,
-    from: row.from_user_id as string,
-    to: row.to_user_id as string,
+    from: (row.from_user_id ?? row.from_user) as string,
+    to: (row.to_user_id ?? row.to_user) as string,
     createdAt: row.created_at as string,
   };
 }
@@ -269,14 +269,25 @@ export async function addRating(rating: KoifesRating): Promise<void> {
 }
 
 export async function addConnection(conn: KoifesConnection): Promise<void> {
-  const { error } = await supabase.from("koifes_connections").insert({
+  let { error } = await supabase.from("koifes_connections").insert({
     from_user_id: conn.from,
     to_user_id: conn.to,
   });
+
+  // テーブル定義差異へのフォールバック（from_user / to_user）
+  if (error && /from_user_id|to_user_id/i.test(error.message || "")) {
+    const retry = await supabase.from("koifes_connections").insert({
+      from_user: conn.from,
+      to_user: conn.to,
+    });
+    error = retry.error;
+  }
+
   if (error) {
     // 重複時は無視（UNIQUE制約違反）
     if (error.code !== "23505") {
-      console.error("[koifes-db] addConnection failed:", error.message, error.details);
+      console.error("Connection insert error:", JSON.stringify(error));
+      throw error;
     }
   }
 }
