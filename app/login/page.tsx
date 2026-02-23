@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { load, saveSession } from "@/app/lib/koifes-db";
+import { load, loadSession, saveSession } from "@/app/lib/koifes-db";
 import { gold } from "@/app/lib/koifes-constants";
 import { BtnPrimary, BtnSecondary } from "@/app/components/koifes/ui";
 
@@ -13,6 +13,13 @@ export default function LoginPage() {
   const [showLogin, setShowLogin] = useState(false);
   const [error, setError] = useState("");
   const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    const savedId = loadSession();
+    if (savedId) {
+      router.replace("/app");
+    }
+  }, [router]);
 
   const handleLogin = async () => {
     if (loginCode.length !== 4) {

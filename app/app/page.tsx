@@ -559,6 +559,10 @@ function AppPageContent() {
             showToast("保存しました");
           }}
           onNav={nav}
+          onLogout={() => {
+            saveSession(null);
+            router.push("/login");
+          }}
         />
         <Toast msg={toast.msg} show={toast.show} />
       </>
@@ -635,7 +639,7 @@ function ScanScreen({
           const cameras = await Html5Qrcode.getCameras();
           if (cameras && cameras.length > 0) {
             const backCam = cameras.find((c) => /back|rear|environment|環境/i.test(c.label || ""));
-            cameraId = backCam ? backCam.id : cameras[0].id;
+            cameraId = backCam ? backCam.id : { facingMode: "environment" };
           }
         } catch {
           cameraId = { facingMode: "environment" };
@@ -775,7 +779,7 @@ function RateScreen({
 }) {
   const [imp, setImp] = useState(0);
   const [ease, setEase] = useState(0);
-  const [status, setStatus] = useState(0);
+  const [status, setStatus] = useState(5);
   const [done, setDone] = useState(false);
   const [sub, setSub] = useState(false);
 
@@ -895,14 +899,61 @@ function RateScreen({
       <div style={{ flex: 1, padding: "8px 24px 40px", maxWidth: 480, margin: "0 auto", width: "100%" }}>
         <SR label="見た目" value={imp} onChange={setImp} leftText="低い" rightText="高い" />
         <SR label="話しやすさ" value={ease} onChange={setEase} leftText="話しにくい" rightText="話しやすい" />
-        <SR
-          label="ステータス"
-          value={status}
-          onChange={setStatus}
-          leftText="低い"
-          rightText="高い"
-          note="（職業・年収・社会的立場の印象）"
-        />
+        {/* ステータス（スライダーUI） */}
+        <div style={{ marginTop: 32 }} className="rate-status-slider">
+          <style>{`
+            .rate-status-slider input[type="range"]::-webkit-slider-thumb {
+              -webkit-appearance: none;
+              appearance: none;
+              width: 28px;
+              height: 28px;
+              border-radius: 50%;
+              background: #c8a96e;
+              cursor: pointer;
+              border: 3px solid #000;
+              box-shadow: 0 0 8px rgba(200, 169, 110, 0.4);
+            }
+            .rate-status-slider input[type="range"]::-moz-range-thumb {
+              width: 28px;
+              height: 28px;
+              border-radius: 50%;
+              background: #c8a96e;
+              cursor: pointer;
+              border: 3px solid #000;
+              box-shadow: 0 0 8px rgba(200, 169, 110, 0.4);
+            }
+          `}</style>
+          <p style={{ fontSize: 13, fontWeight: 600, color: "#fff", marginBottom: 4 }}>ステータス</p>
+          <p style={{ fontSize: 11, color: "#888", marginBottom: 16 }}>（職業・年収・社会的立場の印象）</p>
+          <div style={{ padding: "0 4px" }}>
+            <input
+              type="range"
+              min={1}
+              max={10}
+              step={1}
+              value={status}
+              onChange={(e) => setStatus(Number(e.target.value))}
+              style={{
+                width: "100%",
+                height: 6,
+                appearance: "none",
+                WebkitAppearance: "none",
+                background: `linear-gradient(to right, #c8a96e 0%, #c8a96e ${((status - 1) / 9) * 100}%, #333 ${((status - 1) / 9) * 100}%, #333 100%)`,
+                borderRadius: 3,
+                outline: "none",
+                cursor: "pointer",
+              }}
+            />
+            <div style={{ textAlign: "center", marginTop: 12 }}>
+              <span style={{ fontSize: 32, fontWeight: 700, color: "#c8a96e" }}>{status}</span>
+              <span style={{ fontSize: 14, color: "#888" }}> / 10</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+              <span style={{ fontSize: 11, color: "#666" }}>低い</span>
+              <span style={{ fontSize: 11, color: "#666" }}>高い</span>
+            </div>
+          </div>
+        </div>
       </div>
       <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(to top, #000 60%, transparent)", padding: "32px 24px 36px" }}>
         <BtnPrimary onClick={submit} disabled={sub || !imp || !ease || !status}>{sub ? "保存中..." : "保存する"}</BtnPrimary>
@@ -916,10 +967,12 @@ function ProfileScreen({
   user,
   onSave,
   onNav,
+  onLogout,
 }: {
   user: KoifesUser;
   onSave: (updated: Partial<KoifesUser>) => void;
   onNav: (id: string) => void;
+  onLogout: () => void;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState<KoifesUser>({ ...user });
@@ -1006,6 +1059,22 @@ function ProfileScreen({
           <><Row label="年収帯" value={user.income} /><Row label="結婚の希望" value={user.marriage} /><Row label="結婚の時期" value={user.marriageByWhen} hide={!["強く望んでいる", "できればしたい"].includes(user.marriage || "")} /><Row label="子供の希望" value={user.children} /><Row label="子供の時期" value={user.childrenByWhen} hide={user.children !== "欲しい"} /><Row label="趣味" value={(user.hobbies || []).join("、") || undefined} /><Row label="価値観" value={(user.values || []).join("、") || undefined} /><Row label="参加歴" value={user.eventExp} /></>
         )}
 
+        <button
+          onClick={onLogout}
+          style={{
+            marginTop: 40,
+            padding: "12px 24px",
+            background: "transparent",
+            border: "1px solid #444",
+            borderRadius: 8,
+            color: "#888",
+            fontSize: 13,
+            cursor: "pointer",
+            width: "100%",
+          }}
+        >
+          ログアウト
+        </button>
       </div>
       <BottomNav active="profile" onNav={onNav} />
     </div>
