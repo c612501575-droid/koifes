@@ -634,19 +634,9 @@ function ScanScreen({
         if (!container || !mounted) return;
         const html5QrCode = new Html5Qrcode("qr-reader-scan");
         scannerRef.current = html5QrCode;
-        let cameraId: string | { facingMode: string } = { facingMode: "environment" };
-        try {
-          const cameras = await Html5Qrcode.getCameras();
-          if (cameras && cameras.length > 0) {
-            const backCam = cameras.find((c) => /back|rear|environment|環境/i.test(c.label || ""));
-            cameraId = backCam ? backCam.id : { facingMode: "environment" };
-          }
-        } catch {
-          cameraId = { facingMode: "environment" };
-        }
         await html5QrCode.start(
-          cameraId,
-          { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
           (decodedText) => {
             console.log("[QR] Scanned:", decodedText);
             if (mounted) resolveCode(decodedText);
