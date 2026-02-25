@@ -140,6 +140,14 @@ export default function RegisterPage() {
           return;
         }
       }
+      if (process.env.NEXT_PUBLIC_DEV_BYPASS_4DIGIT === "1") {
+        const res = await fetch("/api/dev-me", { credentials: "include", cache: "no-store" });
+        const d = await res.json().catch(() => ({}));
+        if (d.ok && d.user) {
+          router.replace("/app");
+          return;
+        }
+      }
       setInitCheck(false);
     })();
   }, [router]);

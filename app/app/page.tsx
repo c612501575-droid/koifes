@@ -79,23 +79,36 @@ function AppPageContent() {
     (async () => {
       try {
         const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (!authUser) {
-          router.push("/login");
-          setLoading(false);
-          return;
-        }
-        const data = await load();
-        setDb(data);
-        setLoadError(false);
-        const found = await getKoifesUserByAuthId(authUser.id);
-        if (found) {
-          setUser(found);
-          const initialScreen = searchParams.get("screen") || "home";
-          setScreen(["home", "card", "scan", "profile"].includes(initialScreen) ? initialScreen : "home");
-          console.log("[app] ログイン成功, user:", found.nickname);
+        if (authUser) {
+          const data = await load();
+          setDb(data);
+          setLoadError(false);
+          const found = await getKoifesUserByAuthId(authUser.id);
+          if (found) {
+            setUser(found);
+            const initialScreen = searchParams.get("screen") || "home";
+            setScreen(["home", "card", "scan", "profile"].includes(initialScreen) ? initialScreen : "home");
+            console.log("[app] ログイン成功, user:", found.nickname);
+          } else {
+            console.warn("[app] koifes_users にユーザーが見つかりません → /register");
+            router.push("/register");
+          }
+        } else if (process.env.NEXT_PUBLIC_DEV_BYPASS_4DIGIT === "1") {
+          const res = await fetch("/api/dev-me", { credentials: "include", cache: "no-store" });
+          const devData = await res.json().catch(() => ({}));
+          if (devData.ok && devData.user) {
+            const data = await load();
+            setDb(data);
+            setLoadError(false);
+            setUser(devData.user);
+            const initialScreen = searchParams.get("screen") || "home";
+            setScreen(["home", "card", "scan", "profile"].includes(initialScreen) ? initialScreen : "home");
+            console.log("[app] 開発用ログイン成功, user:", devData.user.nickname);
+          } else {
+            router.push("/login");
+          }
         } else {
-          console.warn("[app] koifes_users にユーザーが見つかりません → /register");
-          router.push("/register");
+          router.push("/login");
         }
       } catch (err) {
         console.error("[app] load failed:", err);
@@ -634,6 +647,9 @@ function AppPageContent() {
           onNav={nav}
           onLogout={async () => {
             await supabase.auth.signOut();
+            if (process.env.NEXT_PUBLIC_DEV_BYPASS_4DIGIT === "1") {
+              await fetch("/api/dev-logout", { method: "POST", credentials: "include" });
+            }
             router.push("/login");
           }}
         />

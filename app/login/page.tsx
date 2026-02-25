@@ -8,10 +8,13 @@ import { getUserByEmail } from "@/app/lib/koifes-db";
 import { gold } from "@/app/lib/koifes-constants";
 import { BtnPrimary, BtnSecondary } from "@/app/components/koifes/ui";
 
+const DEV_BYPASS = process.env.NEXT_PUBLIC_DEV_BYPASS_4DIGIT === "1";
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
+  const [devCode, setDevCode] = useState("");
   const [step, setStep] = useState<"email" | "otp">("email");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -48,6 +51,33 @@ export default function LoginPage() {
       setError("");
     } catch {
       setError("送信に失敗しました。時間をおいて再度お試しください");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDevLogin = async () => {
+    if (devCode.length !== 4) {
+      setError("4桁のコードを入力");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/dev-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: devCode.toUpperCase() }),
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        setError(data.error || "コードが見つかりません");
+        return;
+      }
+      router.replace("/app");
+    } catch {
+      setError("ログインに失敗しました");
     } finally {
       setLoading(false);
     }
@@ -296,6 +326,36 @@ export default function LoginPage() {
             >
               メールを変更
             </BtnSecondary>
+          </div>
+        )}
+
+        {DEV_BYPASS && (
+          <div style={{ marginTop: 32, padding: 20, border: "1px solid #333", borderRadius: 8 }}>
+            <p style={{ fontSize: 11, color: "#666", marginBottom: 12 }}>開発用: 4桁コードでログイン</p>
+            <input
+              value={devCode}
+              onChange={(e) => {
+                setDevCode(e.target.value.toUpperCase().slice(0, 4));
+                setError("");
+              }}
+              placeholder="A1B2"
+              maxLength={4}
+              style={{
+                width: "100%",
+                background: "transparent",
+                border: `1px solid ${error && devCode ? "#e55" : "rgba(255,255,255,0.2)"}`,
+                color: "#fff",
+                fontSize: 18,
+                padding: "10px 12px",
+                outline: "none",
+                textAlign: "center",
+                letterSpacing: "0.3em",
+                marginBottom: 8,
+              }}
+            />
+            <BtnPrimary onClick={handleDevLogin} disabled={loading || devCode.length !== 4}>
+              {loading ? "確認中..." : "4桁コードでログイン"}
+            </BtnPrimary>
           </div>
         )}
 

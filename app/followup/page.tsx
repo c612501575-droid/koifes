@@ -23,13 +23,14 @@ export default function FollowupPage() {
   useEffect(() => {
     (async () => {
       const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) {
-        router.push("/login");
-        return;
+      let user = authUser ? await getKoifesUserByAuthId(authUser.id) : null;
+      if (!user && process.env.NEXT_PUBLIC_DEV_BYPASS_4DIGIT === "1") {
+        const res = await fetch("/api/dev-me", { credentials: "include", cache: "no-store" });
+        const d = await res.json().catch(() => ({}));
+        if (d.ok && d.user) user = d.user;
       }
-      const user = await getKoifesUserByAuthId(authUser.id);
       if (!user) {
-        router.push("/register");
+        router.push(authUser ? "/register" : "/login");
         return;
       }
       setUserId(user.id);

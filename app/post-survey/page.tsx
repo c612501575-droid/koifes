@@ -55,16 +55,18 @@ export default function PostSurveyPage() {
   useEffect(() => {
     (async () => {
       const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) {
-        router.push("/login");
+      let user = authUser ? await getKoifesUserByAuthId(authUser.id) : null;
+      if (!user && process.env.NEXT_PUBLIC_DEV_BYPASS_4DIGIT === "1") {
+        const res = await fetch("/api/dev-me", { credentials: "include", cache: "no-store" });
+        const d = await res.json().catch(() => ({}));
+        if (d.ok && d.user) user = d.user;
+      }
+      if (!user) {
+        router.push(authUser ? "/register" : "/login");
+        setLoading(false);
         return;
       }
       try {
-        const user = await getKoifesUserByAuthId(authUser.id);
-        if (!user) {
-          router.push("/register");
-          return;
-        }
         setUserId(user.id);
         setLoadError(false);
       } catch (err) {

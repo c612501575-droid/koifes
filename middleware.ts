@@ -49,6 +49,13 @@ export async function middleware(request: NextRequest) {
 
   // 3. 一般保護ルート（/app, /register, /followup, /post-survey）
   if (isProtected(pathname)) {
+    // 開発用: 4桁コードバイパス（DEV_BYPASS_4DIGIT=1 のとき）
+    if (process.env.DEV_BYPASS_4DIGIT === "1") {
+      const devUserId = request.cookies.get("koifes_dev_user_id")?.value;
+      if (devUserId) {
+        return response;
+      }
+    }
     const supabase = createServerClient(supabaseUrl, supabaseKey, {
       cookies: {
         getAll() {
