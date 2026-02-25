@@ -132,6 +132,163 @@ export function SliderInput({
   );
 }
 
+export function RankingSelector({
+  title,
+  options,
+  value,
+  onChange,
+  maxRank = 3,
+}: {
+  title: string;
+  options: string[];
+  value: string[];
+  onChange: (ranked: string[]) => void;
+  maxRank?: number;
+}) {
+  const ranked = value.slice(0, maxRank);
+  const isSelected = (opt: string) => ranked.includes(opt);
+  const isFull = ranked.length >= maxRank;
+
+  const add = (opt: string) => {
+    if (isSelected(opt) || isFull) return;
+    onChange([...ranked, opt]);
+  };
+
+  const remove = (opt: string) => {
+    onChange(ranked.filter((x) => x !== opt));
+  };
+
+  const move = (index: number, dir: -1 | 1) => {
+    const next = [...ranked];
+    const j = index + dir;
+    if (j < 0 || j >= next.length) return;
+    [next[index], next[j]] = [next[j], next[index]];
+    onChange(next);
+  };
+
+  const medals = ["🥇", "🥈", "🥉"];
+
+  return (
+    <div style={{ marginBottom: 32 }}>
+      <label style={{ display: "block", fontSize: 13, letterSpacing: "0.1em", color: "#999", marginBottom: 12 }}>{title}</label>
+
+      {/* ランキングエリア */}
+      {ranked.length > 0 && (
+        <div style={{ marginBottom: 16, padding: 16, background: "rgba(255,255,255,0.03)", border: `1px solid rgba(200,169,110,0.2)`, borderRadius: 10 }}>
+          {ranked.map((item, i) => (
+            <div
+              key={`${item}-${i}`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "10px 12px",
+                marginBottom: i < ranked.length - 1 ? 8 : 0,
+                background: "rgba(200,169,110,0.06)",
+                border: `1px solid rgba(200,169,110,0.2)`,
+                borderRadius: 8,
+              }}
+            >
+              <span style={{ fontSize: 18, flexShrink: 0 }}>{medals[i] ?? `${i + 1}位`}</span>
+              <span style={{ flex: 1, fontSize: 13, color: "#fff" }}>{item}</span>
+              <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                <button
+                  type="button"
+                  onClick={() => move(i, -1)}
+                  disabled={i === 0}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: i === 0 ? "#222" : "rgba(255,255,255,0.08)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    borderRadius: 6,
+                    color: i === 0 ? "#444" : gold,
+                    fontSize: 14,
+                    cursor: i === 0 ? "not-allowed" : "pointer",
+                  }}
+                >
+                  ▲
+                </button>
+                <button
+                  type="button"
+                  onClick={() => move(i, 1)}
+                  disabled={i === ranked.length - 1}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: i === ranked.length - 1 ? "#222" : "rgba(255,255,255,0.08)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    borderRadius: 6,
+                    color: i === ranked.length - 1 ? "#444" : gold,
+                    fontSize: 14,
+                    cursor: i === ranked.length - 1 ? "not-allowed" : "pointer",
+                  }}
+                >
+                  ▼
+                </button>
+                <button
+                  type="button"
+                  onClick={() => remove(item)}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "transparent",
+                    border: "1px solid rgba(255,100,100,0.3)",
+                    borderRadius: 6,
+                    color: "#e55",
+                    fontSize: 16,
+                    cursor: "pointer",
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 選択肢一覧 */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {options.map((opt) => {
+          const selected = isSelected(opt);
+          const blocked = !selected && isFull;
+          return (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => (selected ? remove(opt) : add(opt))}
+              style={{
+                background: selected ? gold : "transparent",
+                border: `1px solid ${selected ? gold : blocked ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.15)"}`,
+                color: selected ? "#000" : blocked ? "#444" : "rgba(255,255,255,0.65)",
+                fontFamily: "'Noto Sans JP', sans-serif",
+                fontSize: 12,
+                fontWeight: 400,
+                padding: "7px 14px",
+                cursor: blocked ? "not-allowed" : "pointer",
+                transition: "all 0.25s ease",
+                letterSpacing: "0.05em",
+              }}
+            >
+              {opt}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function FormLabel({
   children,
   required,
@@ -161,12 +318,16 @@ export function FormInput({
   placeholder,
   type = "text",
   maxLength,
+  min,
+  max,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   type?: string;
   maxLength?: number;
+  min?: number;
+  max?: number;
 }) {
   const [focused, setFocused] = useState(false);
   return (
@@ -176,6 +337,8 @@ export function FormInput({
       placeholder={placeholder}
       type={type}
       maxLength={maxLength}
+      min={min}
+      max={max}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       style={{
@@ -453,7 +616,8 @@ export function BottomNav({
   );
 }
 
-export function Toast({ msg, show }: { msg: string; show: boolean }) {
+export function Toast({ msg, show, variant = "success" }: { msg: string; show: boolean; variant?: "success" | "error" }) {
+  const isError = variant === "error";
   return (
     <div
       style={{
@@ -461,8 +625,8 @@ export function Toast({ msg, show }: { msg: string; show: boolean }) {
         bottom: 100,
         left: "50%",
         transform: `translateX(-50%) translateY(${show ? 0 : 20}px)`,
-        background: gold,
-        color: "#000",
+        background: isError ? "#ef4444" : gold,
+        color: isError ? "#fff" : "#000",
         padding: "14px 28px",
         fontSize: 12,
         letterSpacing: "0.15em",

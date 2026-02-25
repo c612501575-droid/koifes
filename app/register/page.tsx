@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { addUser, load, saveSession, type KoifesUser } from "@/app/lib/koifes-db";
 import {
   AGES,
-  AGE_NUMBERS,
   JOBS,
   FAMILY,
   LIVING_WITH_FAMILY,
@@ -18,8 +17,6 @@ import {
   VALUES,
   EVENT_EXP,
   INVEST,
-  CONFIDENCE_5,
-  BARRIER_CHANGE,
   LEAVE_REASONS,
   STAY_CONDITIONS,
   HOUSING_CONDS,
@@ -36,6 +33,8 @@ import {
   Header,
   Progress,
   InfoBox,
+  Toast,
+  RankingSelector,
 } from "@/app/components/koifes/ui";
 
 const TOTAL_STEPS = 5;
@@ -69,6 +68,7 @@ const INIT_FORM = {
   barrierChange: "",
   stayTokushima: "",
   leaveReason: "",
+  leaveReasonsRanked: [] as string[],
   stayConditions: [] as string[],
   buyHouse: "",
   housingConditions: [] as string[],
@@ -130,7 +130,7 @@ export default function RegisterPage() {
   const [form, setForm] = useState(INIT_FORM);
   const [agreed, setAgreed] = useState(false);
   const [agreedWarn, setAgreedWarn] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState({ msg: "", show: false });
   const [saving, setSaving] = useState(false);
   const [completedCode, setCompletedCode] = useState<string | null>(null);
   const agreedRef = useRef<HTMLDivElement | null>(null);
@@ -158,18 +158,22 @@ export default function RegisterPage() {
       return false;
     if (step === 1) {
       if (!form.marriage || !form.children) return false;
+      if (form.dealbreakers.length !== 3) return false;
       const marriageWants = ["強く望んでいる", "できればしたい"];
       const childrenWants = ["欲しい"];
       if (marriageWants.includes(form.marriage) && !form.marriageByWhen) return false;
       if (childrenWants.includes(form.children) && !form.childrenByWhen) return false;
     }
     if (step === 3 && !form.selfImprovement) return false;
-    if (step === 4 && !form.stayTokushima) return false;
+    if (step === 4) {
+      if (!form.stayTokushima) return false;
+      if (form.leaveReasonsRanked.length > 0 && form.leaveReasonsRanked.length !== 3) return false;
+    }
     return true;
   };
 
   const handleComplete = async () => {
-    setError(null);
+    setToast({ msg: "", show: false });
     setSaving(true);
     const newUser: KoifesUser = {
       id: uid(),
@@ -202,7 +206,7 @@ export default function RegisterPage() {
       improvementConfidence: form.improvementConfidence,
       barrierChange: form.barrierChange,
       stayTokushima: form.stayTokushima,
-      leaveReason: form.leaveReason,
+      leaveReason: form.leaveReasonsRanked.length > 0 ? form.leaveReasonsRanked.join("|") : form.leaveReason || undefined,
       stayConditions: form.stayConditions,
       buyHouse: form.buyHouse,
       housingConditions: form.housingConditions,
@@ -230,8 +234,9 @@ export default function RegisterPage() {
         router.refresh();
       }, 3000);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "登録に失敗しました";
-      setError(message);
+      const message = err instanceof Error ? err.message : "保存に失敗しました。もう一度お試しください";
+      setToast({ msg: message, show: true });
+      setTimeout(() => setToast({ msg: "", show: false }), 3000);
       console.error("[register] 登録エラー:", err);
     } finally {
       setSaving(false);
@@ -248,15 +253,15 @@ export default function RegisterPage() {
         ref={agreedRef}
         style={{
           marginBottom: 24,
-          background: agreed ? "rgba(200,169,110,0.08)" : "rgba(255,100,100,0.05)",
-          border: agreed ? "2px solid rgba(200,169,110,0.3)" : "2px solid rgba(255,100,100,0.3)",
+          background: agreed ? "rgba(236,72,153,0.08)" : "rgba(236,72,153,0.05)",
+          border: agreed ? "2px solid rgba(236,72,153,0.4)" : "2px solid rgba(239,68,68,0.6)",
           borderRadius: 12,
           padding: 20,
           transition: "all 0.3s",
-          boxShadow: agreedWarn ? "0 0 0 4px rgba(255,80,80,0.25)" : "none",
+          boxShadow: agreedWarn ? "0 0 0 4px rgba(239,68,68,0.3)" : "none",
         }}
       >
-        <label style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer" }}>
+        <label style={{ display: "flex", alignItems: "flex-start", gap: 14, cursor: "pointer" }}>
           <input
             type="checkbox"
             checked={agreed}
@@ -264,15 +269,20 @@ export default function RegisterPage() {
               setAgreed(e.target.checked);
               if (e.target.checked) setAgreedWarn(false);
             }}
-            style={{ width: 22, height: 22, marginTop: 2, accentColor: "#c8a96e", flexShrink: 0 }}
+            style={{ width: 24, height: 24, marginTop: 2, accentColor: "#ec4899", flexShrink: 0 }}
           />
           <div>
-            <p style={{ fontSize: 14, fontWeight: 700, color: agreed ? "#c8a96e" : "#fff", margin: "0 0 8px" }}>
+            <p style={{ fontSize: 15, fontWeight: 700, color: agreed ? "#ec4899" : "#fff", margin: "0 0 8px" }}>
               上記に同意して始める
             </p>
             <p style={{ fontSize: 11, color: "#999", lineHeight: 1.8, margin: 0 }}>
               入力いただいた情報は、イベント中のプロフィール交換および匿名統計データとして地域づくりに活用されます。イベント終了後、個人を特定できる情報は適切に管理されます。
             </p>
+            {agreedWarn && (
+              <p style={{ fontSize: 12, color: "#f87171", marginTop: 10, fontWeight: 600 }}>
+                同意にチェックしてください
+              </p>
+            )}
           </div>
         </label>
       </div>
@@ -280,7 +290,7 @@ export default function RegisterPage() {
       <div style={{ marginBottom: 32 }}><FormLabel required>ニックネーム</FormLabel><FormInput value={form.nickname} onChange={(v) => set("nickname", v)} placeholder="例：さくら" maxLength={10} /></div>
       <div style={{ marginBottom: 32 }}><FormLabel required>性別</FormLabel><ChipGroup options={["男性", "女性"]} value={form.gender} onChange={(v) => set("gender", v as string)} /></div>
       <div style={{ marginBottom: 32 }}><FormLabel required>年齢（年代）</FormLabel><ChipGroup options={AGES} value={form.age} onChange={(v) => set("age", v as string)} small /></div>
-      <div style={{ marginBottom: 32 }}><FormLabel required>年齢（具体的な数値）</FormLabel><ChipGroup options={AGE_NUMBERS} value={form.ageNumber} onChange={(v) => set("ageNumber", v as string)} small /></div>
+      <div style={{ marginBottom: 32 }}><FormLabel required>年齢（具体的な数値）</FormLabel><FormInput value={form.ageNumber} onChange={(v) => set("ageNumber", v)} placeholder="年齢を入力" type="number" min={18} max={100} /></div>
       <div style={{ marginBottom: 32 }}><FormLabel>身長 (cm)</FormLabel><FormInput value={form.height} onChange={(v) => set("height", v)} placeholder="165" type="number" /></div>
       <div style={{ marginBottom: 32 }}><FormLabel required>職業</FormLabel><ChipGroup options={JOBS} value={form.job} onChange={(v) => set("job", v as string)} small /></div>
       <div style={{ marginBottom: 32 }}><FormLabel required>家族構成</FormLabel><ChipGroup options={FAMILY} value={form.family} onChange={(v) => set("family", v as string)} small /></div>
@@ -308,43 +318,13 @@ export default function RegisterPage() {
       <div style={{ marginBottom: 32 }}><FormLabel>趣味（複数選択可）</FormLabel><ChipGroup options={HOBBIES} value={form.hobbies} onChange={(v) => set("hobbies", v as string[])} multi small /></div>
       <div style={{ marginBottom: 32 }}><FormLabel>大事にしている価値観（複数可）</FormLabel><ChipGroup options={VALUES} value={form.values} onChange={(v) => set("values", v as string[])} multi small /></div>
       <div style={{ marginBottom: 32 }}><FormLabel>イベント参加経験</FormLabel><ChipGroup options={EVENT_EXP} value={form.eventExp} onChange={(v) => set("eventExp", v as string)} small /></div>
-      <div style={{ marginBottom: 32 }}>
-        <FormLabel>付き合うときの決め手は？（上位3つを選択）</FormLabel>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {DEALBREAKER_OPTIONS.map((opt) => {
-            const selected = form.dealbreakers.includes(opt);
-            const blocked = !selected && form.dealbreakers.length >= 3;
-            return (
-              <button
-                key={opt}
-                onClick={() => {
-                  if (blocked) return;
-                  if (selected) {
-                    set("dealbreakers", form.dealbreakers.filter((x) => x !== opt));
-                  } else {
-                    set("dealbreakers", [...form.dealbreakers, opt]);
-                  }
-                }}
-                style={{
-                  background: selected ? "#c8a96e" : "transparent",
-                  border: `1px solid ${selected ? "#c8a96e" : blocked ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.15)"}`,
-                  color: selected ? "#000" : blocked ? "#444" : "rgba(255,255,255,0.55)",
-                  fontFamily: "'Noto Sans JP', sans-serif",
-                  fontSize: 12,
-                  fontWeight: 400,
-                  padding: "7px 14px",
-                  cursor: blocked ? "not-allowed" : "pointer",
-                  transition: "all 0.25s ease",
-                  letterSpacing: "0.05em",
-                  lineHeight: 1.4,
-                }}
-              >
-                {opt}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <RankingSelector
+        title="付き合うときの決め手は？（上位3つを選んで順位をつけてください）"
+        options={DEALBREAKER_OPTIONS}
+        value={form.dealbreakers}
+        onChange={(v) => set("dealbreakers", v)}
+        maxRank={3}
+      />
     </div>,
     // Step 3
     <div key={2}>
@@ -362,16 +342,28 @@ export default function RegisterPage() {
       <InfoBox>⚠ このデータは徳島市の少子化対策に匿名統計として活用されます</InfoBox>
       <div style={{ marginBottom: 32 }}><FormLabel required>本日のイベントに向けて「自分磨き」を行いましたか？</FormLabel><p style={{ fontSize: 11, color: "#666", marginBottom: 12 }}>美容院・ジム・服の新調・スキンケアなど</p><ChipGroup options={["はい", "いいえ"]} value={form.selfImprovement} onChange={(v) => set("selfImprovement", v as string)} /></div>
       {form.selfImprovement === "はい" && (
-        <div style={{ marginBottom: 32 }}><FormLabel>外見を変えたことで、自分に自信が持てましたか？</FormLabel><ChipGroup options={CONFIDENCE_5} value={form.improvementConfidence} onChange={(v) => set("improvementConfidence", v as string)} /></div>
+        <div style={{ marginBottom: 32 }}>
+          <FormLabel>外見を変えたことで、自分に自信が持てましたか？</FormLabel>
+          <SliderInput subLeft="全く持てなかった" subRight="とても持てた" value={form.improvementConfidence ? parseInt(String(form.improvementConfidence).replace(/\D/g, "") || "3", 10) : 3} onChange={(v) => set("improvementConfidence", String(v))} max={5} />
+        </div>
       )}
-      <div style={{ marginBottom: 32 }}><FormLabel>異性と話すことへの心理的ハードルは変化しましたか？</FormLabel><ChipGroup options={BARRIER_CHANGE} value={form.barrierChange} onChange={(v) => set("barrierChange", v as string)} /></div>
+      <div style={{ marginBottom: 32 }}>
+        <FormLabel>異性と話すことへの心理的ハードルは変化しましたか？</FormLabel>
+        <SliderInput subLeft="かなり下がった" subRight="かなり上がった" value={["かなり下がった", "少し下がった", "変わらない", "少し上がった", "かなり上がった"].indexOf(form.barrierChange) + 1 || 3} onChange={(v) => set("barrierChange", ["かなり下がった", "少し下がった", "変わらない", "少し上がった", "かなり上がった"][v - 1] || "")} max={5} />
+      </div>
     </div>,
     // Step 5
     <div key={4}>
       <p style={{ fontSize: 11, letterSpacing: "0.4em", color: "#c8a96e", marginBottom: 8 }}>STEP 05</p>
       <h2 style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 22, fontWeight: 500, lineHeight: 1.6, marginBottom: 32 }}>徳島での生活と<br />将来について</h2>
       <div style={{ marginBottom: 32 }}><FormLabel required>良いパートナーがいれば、今後も徳島に住み続けたいですか？</FormLabel><ChipGroup options={["ぜひ住みたい", "条件次第で", "どちらとも", "県外に出たい"]} value={form.stayTokushima} onChange={(v) => set("stayTokushima", v as string)} accent /></div>
-      <div style={{ marginBottom: 32 }}><FormLabel>県外へ出たい（出た）最大の理由</FormLabel><ChipGroup options={LEAVE_REASONS} value={form.leaveReason} onChange={(v) => set("leaveReason", v as string)} /></div>
+      <RankingSelector
+        title="県外へ出たい（出た）最大の理由（上位3つを選んで順位をつけてください・任意）"
+        options={LEAVE_REASONS}
+        value={form.leaveReasonsRanked}
+        onChange={(v) => set("leaveReasonsRanked", v)}
+        maxRank={3}
+      />
       {isTeen && (
         <div style={{ marginBottom: 32, background: "rgba(200,169,110,0.05)", border: `1px solid ${goldBorder}`, padding: 20 }}>
           <p style={{ fontSize: 12, letterSpacing: "0.15em", color: "#c8a96e", marginBottom: 12 }}>10代の方への質問</p>
@@ -446,17 +438,12 @@ export default function RegisterPage() {
       <Progress step={step + 1} total={TOTAL_STEPS} />
       <div style={{ flex: 1, padding: "32px 24px 40px", maxWidth: 480, margin: "0 auto", width: "100%", overflowY: "auto" }}>{steps[step]}</div>
       <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(to top, #000 60%, transparent)", padding: "32px 24px 36px", flexShrink: 0 }}>
-        {error && (
-          <div style={{ marginBottom: 16, padding: 12, background: "rgba(220,38,38,0.2)", border: "1px solid #dc2626", color: "#fca5a5", fontSize: 12 }}>
-            {error}
-          </div>
-        )}
         <div
           onClick={() => {
             if (step === 0 && !agreed) {
               setAgreedWarn(true);
               agreedRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-              setTimeout(() => setAgreedWarn(false), 700);
+              setTimeout(() => setAgreedWarn(false), 2500);
             }
           }}
         >
@@ -468,8 +455,8 @@ export default function RegisterPage() {
             disabled={!validate() || saving}
             style={{
               width: "100%",
-              background: !validate() || saving ? "#222" : "#c8a96e",
-              color: !validate() || saving ? "#555" : "#000",
+              background: !validate() || saving ? "#222" : "#ec4899",
+              color: !validate() || saving ? "#555" : "#fff",
               border: !validate() || saving ? "1px solid #333" : "none",
               fontFamily: "'Noto Sans JP', sans-serif",
               fontSize: 14,
@@ -484,6 +471,7 @@ export default function RegisterPage() {
           </button>
         </div>
       </div>
+      <Toast msg={toast.msg} show={toast.show} variant="error" />
     </div>
   );
 }

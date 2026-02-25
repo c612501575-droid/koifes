@@ -30,7 +30,6 @@ import {
 import { QRCode } from "@/app/components/koifes/qr";
 import {
   AGES,
-  AGE_NUMBERS,
   JOBS,
   FAMILY,
   SIBLINGS,
@@ -47,7 +46,6 @@ import {
   WEAKNESS,
   CONFIDENCE_5,
   BARRIER_CHANGE,
-  LEAVE_REASONS,
   STAY_CONDITIONS,
   HOUSING_CONDS,
   COMPANY_SUPPORT,
@@ -63,11 +61,11 @@ function AppPageContent() {
   const [historyFavoritesOnly, setHistoryFavoritesOnly] = useState(false);
   const [db, setDb] = useState<KoifesDb>({ users: [], ratings: [], connections: [], favorites: [] });
   const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState({ msg: "", show: false });
+  const [toast, setToast] = useState({ msg: "", show: false, variant: "success" as "success" | "error" });
 
-  const showToast = (msg: string) => {
-    setToast({ msg, show: true });
-    setTimeout(() => setToast({ msg: "", show: false }), 2400);
+  const showToast = (msg: string, isError = false) => {
+    setToast({ msg, show: true, variant: isError ? "error" : "success" });
+    setTimeout(() => setToast({ msg: "", show: false, variant: "success" }), 3000);
   };
   const refreshDb = useCallback(async () => {
     const d = await load();
@@ -75,29 +73,36 @@ function AppPageContent() {
     return d;
   }, []);
 
+  const [loadError, setLoadError] = useState(false);
   useEffect(() => {
     (async () => {
-      const data = await load();
-      setDb(data);
-      const savedId = loadSession();
-      console.log("[app] loadSession:", savedId, "users count:", data.users.length);
-      if (savedId) {
-        const found = data.users.find((u) => u.id === savedId);
-        if (found) {
-          setUser(found);
-          const initialScreen = searchParams.get("screen") || "home";
-          setScreen(["home", "card", "scan", "profile"].includes(initialScreen) ? initialScreen : "home");
-          console.log("[app] ログイン成功, user:", found.nickname);
+      try {
+        const data = await load();
+        setDb(data);
+        setLoadError(false);
+        const savedId = loadSession();
+        console.log("[app] loadSession:", savedId, "users count:", data.users.length);
+        if (savedId) {
+          const found = data.users.find((u) => u.id === savedId);
+          if (found) {
+            setUser(found);
+            const initialScreen = searchParams.get("screen") || "home";
+            setScreen(["home", "card", "scan", "profile"].includes(initialScreen) ? initialScreen : "home");
+            console.log("[app] ログイン成功, user:", found.nickname);
+          } else {
+            console.warn("[app] セッションのユーザーが見つかりません");
+            saveSession(null);
+            router.push("/login");
+          }
         } else {
-          console.warn("[app] セッションのユーザーが見つかりません。savedId:", savedId, "users:", data.users.map((u) => u.id));
-          saveSession(null);
           router.push("/login");
         }
-      } else {
-        console.log("[app] セッションなし, redirect to login");
-        router.push("/login");
+      } catch (err) {
+        console.error("[app] load failed:", err);
+        setLoadError(true);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, [router, searchParams]);
 
@@ -106,15 +111,50 @@ function AppPageContent() {
       router.push("/admin");
       return;
     }
-    if (id === "history") {
-      setScreen("history");
-      return;
+    try {
+      await refreshDb();
+    } catch {
+      showToast("データの読み込みに失敗しました", true);
     }
-    await refreshDb();
     setScreen(id);
   };
 
   if (loading || !user) {
+    if (loadError) {
+      return (
+        <div
+          style={{
+            minHeight: "100vh",
+            background: "#000",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#fff",
+            fontSize: 14,
+            padding: 24,
+            textAlign: "center",
+          }}
+        >
+          <p style={{ marginBottom: 16 }}>データの読み込みに失敗しました</p>
+          <p style={{ fontSize: 12, color: "#888", marginBottom: 24 }}>電波状況を確認して再読み込みしてください</p>
+          <button
+            onClick={() => { setLoading(true); setLoadError(false); window.location.reload(); }}
+            style={{
+              padding: "12px 24px",
+              background: "#333",
+              border: "1px solid #555",
+              color: "#fff",
+              borderRadius: 8,
+              cursor: "pointer",
+              fontSize: 13,
+            }}
+          >
+            再読み込み
+          </button>
+        </div>
+      );
+    }
     return (
       <div
         style={{
@@ -241,7 +281,7 @@ function AppPageContent() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {[
               { id: "scan", icon: "⊡", title: "スキャン", desc: "相手のコードを\n読み取る" },
-              { id: "history", icon: "◇", title: "履歴・お気に入り", desc: "接続した人を\n確認する" },
+              { id: "history", icon: "◇", title: "履歴", desc: "接続した人を\n確認する" },
             ].map((a) => (
               <button
                 key={a.id}
@@ -249,7 +289,7 @@ function AppPageContent() {
                 style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.08)", padding: "28px 20px", cursor: "pointer", textAlign: "left" }}
               >
                 <span style={{ fontSize: 24, display: "block", marginBottom: 14, color: gold }}>{a.icon}</span>
-                <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 16, fontWeight: 400, color: "#fff", marginBottom: 6 }}>{a.title}</div>
+                <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 16, fontWeight: 400, color: "#fff", marginBottom: 6, whiteSpace: "nowrap" }}>{a.title}</div>
                 <div style={{ fontSize: 11, color: "#666", lineHeight: 1.8, whiteSpace: "pre-line" }}>{a.desc}</div>
               </button>
             ))}
@@ -262,39 +302,25 @@ function AppPageContent() {
               color: "#555",
               marginBottom: 12,
             }}>AFTER EVENT</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <button
-                onClick={() => router.push("/post-survey")}
-                style={{
-                  background: "transparent",
-                  border: "1px solid rgba(200,169,110,0.2)",
-                  padding: "28px 20px",
-                  cursor: "pointer",
-                  textAlign: "left",
-                }}
-              >
-                <span style={{ fontSize: 24, display: "block", marginBottom: 14, color: gold }}>◆</span>
-                <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 16, fontWeight: 400, color: "#fff", marginBottom: 6 }}>アンケート</div>
-                <div style={{ fontSize: 11, color: "#666", lineHeight: 1.8, whiteSpace: "pre-line" }}>{"イベント後の\n変化を回答"}</div>
-              </button>
-              <button
-                onClick={() => router.push("/followup")}
-                style={{
-                  background: "transparent",
-                  border: "1px solid rgba(200,169,110,0.2)",
-                  padding: "28px 20px",
-                  cursor: "pointer",
-                  textAlign: "left",
-                }}
-              >
-                <span style={{ fontSize: 24, display: "block", marginBottom: 14, color: gold }}>♡</span>
-                <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 16, fontWeight: 400, color: "#fff", marginBottom: 6 }}>フォローアップ</div>
-                <div style={{ fontSize: 11, color: "#666", lineHeight: 1.8, whiteSpace: "pre-line" }}>{"連絡先交換を\nリクエスト"}</div>
-              </button>
-            </div>
+            <button
+              onClick={() => router.push("/post-survey")}
+              style={{
+                width: "100%",
+                background: "transparent",
+                border: "1px solid rgba(200,169,110,0.2)",
+                padding: "28px 20px",
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              <span style={{ fontSize: 24, display: "block", marginBottom: 14, color: gold }}>◆</span>
+              <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 16, fontWeight: 400, color: "#fff", marginBottom: 6 }}>アンケート</div>
+              <div style={{ fontSize: 11, color: "#666", lineHeight: 1.8, whiteSpace: "pre-line" }}>{"イベント後の\n変化を回答"}</div>
+            </button>
           </div>
         </div>
         <BottomNav active="home" onNav={nav} />
+        <Toast msg={toast.msg} show={toast.show} variant={toast.variant} />
       </div>
     );
   }
@@ -374,6 +400,7 @@ function AppPageContent() {
           <div style={{ marginTop: 24 }}><BtnPrimary onClick={() => nav("scan")}>相手のコードを入力 →</BtnPrimary></div>
         </div>
         <BottomNav active="card" onNav={nav} />
+        <Toast msg={toast.msg} show={toast.show} variant={toast.variant} />
       </div>
     );
   }
@@ -381,74 +408,38 @@ function AppPageContent() {
   // ScanScreen
   if (screen === "scan") {
     return (
-      <ScanScreen
-        user={user}
-        onNav={nav}
-        onFound={(t) => {
-          setTarget(t);
-          setViewProfileFrom("scan");
-          setScreen("viewProfile");
-        }}
-      />
+      <>
+        <ScanScreen
+          user={user}
+          onNav={nav}
+          onFound={(t) => {
+            setTarget(t);
+            setViewProfileFrom("scan");
+            setScreen("viewProfile");
+          }}
+          onToast={showToast}
+        />
+        <Toast msg={toast.msg} show={toast.show} variant={toast.variant} />
+      </>
     );
   }
 
   // ViewProfileScreen
   if (screen === "viewProfile" && target) {
-    const isFavorite = (db.favorites || []).some((f) => f.userId === user.id && f.favoriteUserId === target.id);
-    const rows = [
-      ["性別", target.gender],
-      ["年齢", target.ageNumber ? `${target.ageNumber}歳` : target.age],
-      ["身長", target.height && `${target.height}cm`],
-      ["職業", target.job],
-      ["年収帯", target.income],
-      ["結婚への希望", target.marriage],
-      ["結婚の時期", target.marriageByWhen],
-      ["子供の希望", target.children],
-      ["子供の時期", target.childrenByWhen],
-      ["趣味", (target.hobbies || []).join("、")],
-      ["価値観", (target.values || []).join("、")],
-      ["付き合うときの決め手", (target.dealbreakers || []).join("、")],
-      ["参加歴", target.eventExp],
-    ].filter(([, v]) => v);
     return (
-      <div style={{ minHeight: "100vh", background: "#000", color: "#fff" }}>
-        <Header title="Profile" onLeft={() => setScreen(viewProfileFrom)} />
-        <div style={{ padding: "24px 24px 140px", maxWidth: 480, margin: "0 auto", animation: "cardReveal 0.6s ease" }}>
-          <div style={{ textAlign: "center", marginBottom: 36 }}>
-            <Avatar char={target.nickname?.[0]} size={80} borderColor={goldBorder} />
-            <h2 style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 24, fontWeight: 400, marginTop: 16 }}>{target.nickname}</h2>
-            <p style={{ fontSize: 11, letterSpacing: "0.15em", color: "#999", marginTop: 6 }}>{[target.age, target.job, target.height && `${target.height}cm`].filter(Boolean).join(" · ")}</p>
-            <button
-              onClick={async () => {
-                await toggleFavorite(user.id, target.id);
-                await refreshDb();
-              }}
-              style={{
-                marginTop: 14,
-                background: "transparent",
-                border: `1px solid ${isFavorite ? "rgba(200,169,110,0.45)" : "rgba(255,255,255,0.2)"}`,
-                color: isFavorite ? gold : "#999",
-                fontSize: 12,
-                padding: "8px 16px",
-                cursor: "pointer",
-                letterSpacing: "0.08em",
-              }}
-            >
-              {isFavorite ? "♡ お気に入り済み" : "♡ お気に入り"}
-            </button>
-          </div>
-          {rows.map(([l, v]) => (
-            <div key={l as string} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "14px 0", borderBottom: `1px solid ${faintLine2}` }}>
-              <span style={{ fontSize: 11, color: "#666", flexShrink: 0 }}>{l}</span>
-              <span style={{ fontSize: 13, textAlign: "right", marginLeft: 16, color: "#ccc", fontWeight: 400 }}>{v}</span>
-            </div>
-          ))}
-        </div>
-        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "linear-gradient(to top, #000 60%, transparent)", padding: "32px 24px 36px", maxWidth: 480, margin: "0 auto" }}>
-          <BtnPrimary onClick={() => setScreen("rate")}>この人を評価する →</BtnPrimary>
-        </div>
-      </div>
+      <>
+        <ViewProfileContent
+          target={target}
+          user={user}
+          db={db}
+          viewProfileFrom={viewProfileFrom}
+          setScreen={setScreen}
+          refreshDb={refreshDb}
+          toggleFavorite={toggleFavorite}
+          showToast={showToast}
+        />
+        <Toast msg={toast.msg} show={toast.show} variant={toast.variant} />
+      </>
     );
   }
 
@@ -468,7 +459,7 @@ function AppPageContent() {
           onBack={() => setScreen("viewProfile")}
           onToast={showToast}
         />
-        <Toast msg={toast.msg} show={toast.show} />
+        <Toast msg={toast.msg} show={toast.show} variant={toast.variant} />
       </>
     );
   }
@@ -542,6 +533,7 @@ function AppPageContent() {
           )}
         </div>
         <BottomNav active="home" onNav={nav} />
+        <Toast msg={toast.msg} show={toast.show} variant={toast.variant} />
       </div>
     );
   }
@@ -553,10 +545,14 @@ function AppPageContent() {
         <ProfileScreen
           user={user}
           onSave={async (updated) => {
-            await updateUser({ ...user, ...updated });
-            setUser({ ...user, ...updated });
-            await refreshDb();
-            showToast("保存しました");
+            try {
+              await updateUser({ ...user, ...updated });
+              setUser({ ...user, ...updated });
+              await refreshDb();
+              showToast("保存しました");
+            } catch {
+              showToast("保存に失敗しました。もう一度お試しください", true);
+            }
           }}
           onNav={nav}
           onLogout={() => {
@@ -564,13 +560,86 @@ function AppPageContent() {
             router.push("/login");
           }}
         />
-        <Toast msg={toast.msg} show={toast.show} />
+        <Toast msg={toast.msg} show={toast.show} variant={toast.variant} />
       </>
     );
   }
 
   return null;
 }
+
+function ViewProfileContent({
+  target,
+  user,
+  db,
+  viewProfileFrom,
+  setScreen,
+  refreshDb,
+  toggleFavorite,
+  showToast,
+}: {
+  target: KoifesUser;
+  user: KoifesUser;
+  db: KoifesDb;
+  viewProfileFrom: "scan" | "history";
+  setScreen: (s: string) => void;
+  refreshDb: () => Promise<KoifesDb>;
+  toggleFavorite: (userId: string, favId: string) => Promise<boolean>;
+  showToast: (msg: string, isError?: boolean) => void;
+}) {
+  const isFavorite = (db.favorites || []).some((f) => f.userId === user.id && f.favoriteUserId === target.id);
+  const rows = [
+      ["年齢", target.ageNumber ? `${target.ageNumber}歳` : target.age],
+      ["職業", target.job],
+      ["結婚への希望", target.marriage],
+      ["趣味", (target.hobbies || []).join("、")],
+      ["価値観", (target.values || []).join("、")],
+      ["自分の長所", target.personality],
+    ].filter(([, v]) => v);
+    return (
+      <div style={{ minHeight: "100vh", background: "#000", color: "#fff" }}>
+        <Header title="Profile" onLeft={() => setScreen(viewProfileFrom)} />
+        <div style={{ padding: "24px 24px 140px", maxWidth: 480, margin: "0 auto", animation: "cardReveal 0.6s ease" }}>
+          <div style={{ textAlign: "center", marginBottom: 36 }}>
+            <Avatar char={target.nickname?.[0]} size={80} borderColor={goldBorder} />
+            <h2 style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 24, fontWeight: 400, marginTop: 16 }}>{target.nickname}</h2>
+            <p style={{ fontSize: 11, letterSpacing: "0.15em", color: "#999", marginTop: 6 }}>{[target.age, target.job, target.height && `${target.height}cm`].filter(Boolean).join(" · ")}</p>
+            <button
+              onClick={async () => {
+                try {
+                  await toggleFavorite(user.id, target.id);
+                  await refreshDb();
+                } catch {
+                  showToast("保存に失敗しました。もう一度お試しください", true);
+                }
+              }}
+              style={{
+                marginTop: 14,
+                background: "transparent",
+                border: `1px solid ${isFavorite ? "rgba(200,169,110,0.45)" : "rgba(255,255,255,0.2)"}`,
+                color: isFavorite ? gold : "#999",
+                fontSize: 12,
+                padding: "8px 16px",
+                cursor: "pointer",
+                letterSpacing: "0.08em",
+              }}
+            >
+              {isFavorite ? "♡ お気に入り済み" : "♡ お気に入り"}
+            </button>
+          </div>
+          {rows.map(([l, v]) => (
+            <div key={l as string} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "14px 0", borderBottom: `1px solid ${faintLine2}` }}>
+              <span style={{ fontSize: 11, color: "#666", flexShrink: 0 }}>{l}</span>
+              <span style={{ fontSize: 13, textAlign: "right", marginLeft: 16, color: "#ccc", fontWeight: 400 }}>{v}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "linear-gradient(to top, #000 60%, transparent)", padding: "32px 24px 36px", maxWidth: 480, margin: "0 auto" }}>
+          <BtnPrimary onClick={() => setScreen("rate")}>この人を評価する →</BtnPrimary>
+        </div>
+      </div>
+    );
+  }
 
 export default function AppPage() {
   return (
@@ -585,10 +654,12 @@ function ScanScreen({
   user,
   onNav,
   onFound,
+  onToast,
 }: {
   user: KoifesUser;
   onNav: (id: string) => void;
   onFound: (t: KoifesUser) => void;
+  onToast: (msg: string, isError?: boolean) => void;
 }) {
   const [mode, setMode] = useState<"loading" | "camera" | "fallback">("loading");
   const [code, setCode] = useState("");
@@ -600,20 +671,24 @@ function ScanScreen({
     async (decodedCode: string) => {
       const codeStr = String(decodedCode || "").trim().toUpperCase().slice(0, 4);
       if (codeStr.length < 4) return;
-      const data = await load();
-      const found = data.users.find((u) => u.code === codeStr && u.id !== user.id);
-      if (found) {
-        if (scannerRef.current) {
-          try {
-            await scannerRef.current.stop();
-          } catch {}
+      try {
+        const data = await load();
+        const found = data.users.find((u) => u.code === codeStr && u.id !== user.id);
+        if (found) {
+          if (scannerRef.current) {
+            try {
+              await scannerRef.current.stop();
+            } catch {}
+          }
+          onFound(found);
+        } else {
+          setError("該当するユーザーが見つかりません");
         }
-        onFound(found);
-      } else {
-        setError("該当するユーザーが見つかりません");
+      } catch {
+        onToast("通信エラーが発生しました。電波状況を確認してください", true);
       }
     },
-    [user.id, onFound]
+    [user.id, onFound, onToast]
   );
 
   const search = async () => {
@@ -765,59 +840,86 @@ function RateScreen({
   user: KoifesUser;
   onComplete: () => void;
   onBack: () => void;
-  onToast: (msg: string) => void;
+  onToast: (msg: string, isError?: boolean) => void;
 }) {
-  const [imp, setImp] = useState(0);
-  const [ease, setEase] = useState(0);
+  const [imp, setImp] = useState(5);
+  const [ease, setEase] = useState(5);
   const [status, setStatus] = useState(5);
   const [done, setDone] = useState(false);
   const [sub, setSub] = useState(false);
 
-  const SR = ({
+  const accentColor = "#ec4899";
+  const RateSlider = ({
     label,
+    note,
     value,
     onChange,
     leftText,
     rightText,
-    note,
+    min,
+    max,
   }: {
     label: string;
+    note?: string;
     value: number;
     onChange: (v: number) => void;
     leftText: string;
     rightText: string;
-    note?: string;
+    min: number;
+    max: number;
   }) => (
-    <div style={{ marginBottom: 32 }}>
-      <label style={{ display: "block", fontSize: 11, letterSpacing: "0.2em", color: "#999", marginBottom: 14 }}>{label}</label>
-      {note && <p style={{ fontSize: 11, color: "#888", marginTop: -8, marginBottom: 12 }}>{note}</p>}
-      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-        {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-          <button
-            key={n}
-            onClick={() => onChange(n)}
-            style={{
-              width: 33,
-              height: 33,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              border: `1px solid ${n === value ? gold : "rgba(255,255,255,0.12)"}`,
-              background: n === value ? gold : "transparent",
-              color: n === value ? "#000" : "rgba(255,255,255,0.3)",
-              fontFamily: "'Noto Sans JP', sans-serif",
-              fontSize: 13,
-              cursor: "pointer",
-              transition: "all 0.15s",
-            }}
-          >
-            {n}
-          </button>
-        ))}
+    <div style={{ marginBottom: 32 }} className="rate-slider">
+      <style>{`
+        .rate-slider input[type="range"]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: ${accentColor};
+          cursor: pointer;
+          border: 3px solid #000;
+          box-shadow: 0 0 10px rgba(236,72,153,0.45);
+        }
+        .rate-slider input[type="range"]::-moz-range-thumb {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: ${accentColor};
+          cursor: pointer;
+          border: 3px solid #000;
+          box-shadow: 0 0 10px rgba(236,72,153,0.45);
+        }
+      `}</style>
+      <p style={{ fontSize: 13, fontWeight: 600, color: "#fff", marginBottom: 4 }}>{label}</p>
+      {note && <p style={{ fontSize: 11, color: "#888", marginBottom: 8 }}>{note}</p>}
+      <div style={{ textAlign: "center", marginBottom: 12 }}>
+        <span style={{ fontSize: 36, fontWeight: 700, color: accentColor }}>{value}</span>
+        <span style={{ fontSize: 14, color: "#888" }}> / {max}</span>
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#666", marginTop: 4 }}>
-        <span>{leftText}</span>
-        <span>{rightText}</span>
+      <div style={{ padding: "0 4px" }}>
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={1}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          style={{
+            width: "100%",
+            height: 8,
+            appearance: "none",
+            WebkitAppearance: "none",
+            background: `linear-gradient(to right, ${accentColor} 0%, ${accentColor} ${((value - min) / (max - min)) * 100}%, rgba(236,72,153,0.25) ${((value - min) / (max - min)) * 100}%, rgba(236,72,153,0.25) 100%)`,
+            borderRadius: 4,
+            outline: "none",
+            cursor: "pointer",
+          }}
+        />
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+          <span style={{ fontSize: 11, color: "#666" }}>{leftText}</span>
+          <span style={{ fontSize: 11, color: "#666" }}>{rightText}</span>
+        </div>
       </div>
     </div>
   );
@@ -858,7 +960,7 @@ function RateScreen({
         } catch {}
       }
       setSub(false);
-      onToast("保存に失敗しました。もう一度お試しください");
+      onToast("保存に失敗しました。もう一度お試しください", true);
       return;
     }
   };
@@ -887,63 +989,9 @@ function RateScreen({
       </div>
       <InfoBox>✧ この記録は相手には一切表示されません。あなたの印象メモとして、また匿名統計データとして地域づくりに活かされます。</InfoBox>
       <div style={{ flex: 1, padding: "8px 24px 40px", maxWidth: 480, margin: "0 auto", width: "100%" }}>
-        <SR label="見た目" value={imp} onChange={setImp} leftText="低い" rightText="高い" />
-        <SR label="話しやすさ" value={ease} onChange={setEase} leftText="話しにくい" rightText="話しやすい" />
-        {/* ステータス（スライダーUI） */}
-        <div style={{ marginTop: 32 }} className="rate-status-slider">
-          <style>{`
-            .rate-status-slider input[type="range"]::-webkit-slider-thumb {
-              -webkit-appearance: none;
-              appearance: none;
-              width: 28px;
-              height: 28px;
-              border-radius: 50%;
-              background: #c8a96e;
-              cursor: pointer;
-              border: 3px solid #000;
-              box-shadow: 0 0 8px rgba(200, 169, 110, 0.4);
-            }
-            .rate-status-slider input[type="range"]::-moz-range-thumb {
-              width: 28px;
-              height: 28px;
-              border-radius: 50%;
-              background: #c8a96e;
-              cursor: pointer;
-              border: 3px solid #000;
-              box-shadow: 0 0 8px rgba(200, 169, 110, 0.4);
-            }
-          `}</style>
-          <p style={{ fontSize: 13, fontWeight: 600, color: "#fff", marginBottom: 4 }}>ステータス</p>
-          <p style={{ fontSize: 11, color: "#888", marginBottom: 16 }}>（職業・年収・社会的立場の印象）</p>
-          <div style={{ padding: "0 4px" }}>
-            <input
-              type="range"
-              min={1}
-              max={10}
-              step={1}
-              value={status}
-              onChange={(e) => setStatus(Number(e.target.value))}
-              style={{
-                width: "100%",
-                height: 6,
-                appearance: "none",
-                WebkitAppearance: "none",
-                background: `linear-gradient(to right, #c8a96e 0%, #c8a96e ${((status - 1) / 9) * 100}%, #333 ${((status - 1) / 9) * 100}%, #333 100%)`,
-                borderRadius: 3,
-                outline: "none",
-                cursor: "pointer",
-              }}
-            />
-            <div style={{ textAlign: "center", marginTop: 12 }}>
-              <span style={{ fontSize: 32, fontWeight: 700, color: "#c8a96e" }}>{status}</span>
-              <span style={{ fontSize: 14, color: "#888" }}> / 10</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-              <span style={{ fontSize: 11, color: "#666" }}>低い</span>
-              <span style={{ fontSize: 11, color: "#666" }}>高い</span>
-            </div>
-          </div>
-        </div>
+        <RateSlider label="見た目" value={imp} onChange={setImp} leftText="低い" rightText="高い" min={1} max={10} />
+        <RateSlider label="話しやすさ" value={ease} onChange={setEase} leftText="話しにくい" rightText="話しやすい" min={1} max={10} />
+        <RateSlider label="ステータス" note="（職業・年収・社会的立場の印象）" value={status} onChange={setStatus} leftText="低い" rightText="高い" min={1} max={10} />
       </div>
       <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(to top, #000 60%, transparent)", padding: "32px 24px 36px" }}>
         <BtnPrimary onClick={submit} disabled={sub || !imp || !ease || !status}>{sub ? "保存中..." : "保存する"}</BtnPrimary>
@@ -1022,15 +1070,12 @@ function ProfileScreen({
             <div style={{ marginBottom: 18 }}><FormLabel>ニックネーム</FormLabel><FormInput value={draft.nickname || ""} onChange={(v) => setD("nickname", v)} maxLength={10} /></div>
             <div style={{ marginBottom: 18 }}><FormLabel>性別</FormLabel><ChipGroup options={["男性", "女性"]} value={draft.gender || ""} onChange={(v) => setD("gender", v as string)} small /></div>
             <div style={{ marginBottom: 18 }}><FormLabel>年齢（年代）</FormLabel><ChipGroup options={AGES} value={draft.age || ""} onChange={(v) => setD("age", v as string)} small /></div>
-            <div style={{ marginBottom: 18 }}><FormLabel>年齢（数値）</FormLabel><ChipGroup options={AGE_NUMBERS} value={draft.ageNumber ? String(draft.ageNumber) : ""} onChange={(v) => setD("ageNumber", v ? parseInt(v as string, 10) : undefined)} small /></div>
+            <div style={{ marginBottom: 18 }}><FormLabel>年齢（数値）</FormLabel><FormInput value={draft.ageNumber ? String(draft.ageNumber) : ""} onChange={(v) => setD("ageNumber", v ? parseInt(v, 10) || undefined : undefined)} placeholder="年齢を入力" type="number" min={18} max={100} /></div>
             <div style={{ marginBottom: 18 }}><FormLabel>身長</FormLabel><FormInput value={draft.height || ""} onChange={(v) => setD("height", v)} type="number" /></div>
-            <div style={{ marginBottom: 18 }}><FormLabel>職業</FormLabel><ChipGroup options={JOBS} value={draft.job || ""} onChange={(v) => setD("job", v as string)} small /></div>
-            <div style={{ marginBottom: 18 }}><FormLabel>家族構成</FormLabel><ChipGroup options={FAMILY} value={draft.family || ""} onChange={(v) => setD("family", v as string)} small /></div>
-            <div style={{ marginBottom: 18 }}><FormLabel>兄弟構成</FormLabel><ChipGroup options={SIBLINGS} value={draft.siblings || ""} onChange={(v) => setD("siblings", v as string)} small /></div>
-            <div style={{ marginBottom: 0 }}><FormLabel>家族の有無</FormLabel><ChipGroup options={LIVING_WITH_FAMILY} value={draft.livingWithFamily || ""} onChange={(v) => setD("livingWithFamily", v as string)} small /></div>
+            <div style={{ marginBottom: 0 }}><FormLabel>職業</FormLabel><ChipGroup options={JOBS} value={draft.job || ""} onChange={(v) => setD("job", v as string)} small /></div>
           </EditBox>
         ) : (
-          <><Row label="フルネーム" value={user.fullName} /><Row label="ニックネーム" value={user.nickname} /><Row label="性別" value={user.gender} /><Row label="年齢" value={user.age} /><Row label="年齢（数値）" value={user.ageNumber ? `${user.ageNumber}歳` : undefined} /><Row label="身長" value={user.height ? `${user.height}cm` : undefined} /><Row label="職業" value={user.job} /><Row label="家族構成" value={user.family} /><Row label="兄弟構成" value={user.siblings} /><Row label="家族の有無" value={user.livingWithFamily} /></>
+          <><Row label="フルネーム" value={user.fullName} /><Row label="ニックネーム" value={user.nickname} /><Row label="性別" value={user.gender} /><Row label="年齢" value={user.age} /><Row label="年齢（数値）" value={user.ageNumber ? `${user.ageNumber}歳` : undefined} /><Row label="身長" value={user.height ? `${user.height}cm` : undefined} /><Row label="職業" value={user.job} /></>
         )}
 
         <SH title="VALUES & HOPES" sid="values" />
@@ -1046,7 +1091,7 @@ function ProfileScreen({
             <div style={{ marginBottom: 0 }}><FormLabel>参加歴</FormLabel><ChipGroup options={EVENT_EXP} value={draft.eventExp || ""} onChange={(v) => setD("eventExp", v as string)} small /></div>
           </EditBox>
         ) : (
-          <><Row label="年収帯" value={user.income} /><Row label="結婚の希望" value={user.marriage} /><Row label="結婚の時期" value={user.marriageByWhen} hide={!["強く望んでいる", "できればしたい"].includes(user.marriage || "")} /><Row label="子供の希望" value={user.children} /><Row label="子供の時期" value={user.childrenByWhen} hide={user.children !== "欲しい"} /><Row label="趣味" value={(user.hobbies || []).join("、") || undefined} /><Row label="価値観" value={(user.values || []).join("、") || undefined} /><Row label="参加歴" value={user.eventExp} /></>
+          <><Row label="結婚の希望" value={user.marriage} /><Row label="結婚の時期" value={user.marriageByWhen} hide={!["強く望んでいる", "できればしたい"].includes(user.marriage || "")} /><Row label="子供の希望" value={user.children} /><Row label="子供の時期" value={user.childrenByWhen} hide={user.children !== "欲しい"} /><Row label="趣味" value={(user.hobbies || []).join("、") || undefined} /><Row label="価値観" value={(user.values || []).join("、") || undefined} /><Row label="自分の長所" value={user.personality} /></>
         )}
 
         <button
