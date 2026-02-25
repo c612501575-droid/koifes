@@ -669,11 +669,16 @@ function ScanScreen({
 
   const resolveCode = useCallback(
     async (decodedCode: string) => {
-      const codeStr = String(decodedCode || "").trim().toUpperCase().slice(0, 4);
+      // QRコードは4桁コード（例: A1B2）またはURL埋め込みの可能性がある
+      const raw = String(decodedCode || "").trim();
+      const codeParam = raw.match(/[?&]code=([A-Za-z0-9]{4})/i);
+      const fourChar = raw.match(/([A-Z0-9]{4})/gi);
+      const codeStr = (codeParam?.[1] || fourChar?.[fourChar.length - 1] || raw.replace(/[^A-Z0-9]/gi, "").slice(0, 4) || "").toUpperCase();
       if (codeStr.length < 4) return;
+      console.log("[ScanScreen] 解析したコード:", codeStr, "元データ:", raw.slice(0, 80));
       try {
         const data = await load();
-        const found = data.users.find((u) => u.code === codeStr && u.id !== user.id);
+        const found = data.users.find((u) => (u.code || "").toUpperCase() === codeStr && u.id !== user.id);
         if (found) {
           if (scannerRef.current) {
             try {
@@ -684,7 +689,8 @@ function ScanScreen({
         } else {
           setError("該当するユーザーが見つかりません");
         }
-      } catch {
+      } catch (err) {
+        console.error("[ScanScreen] resolveCode failed:", err);
         onToast("通信エラーが発生しました。電波状況を確認してください", true);
       }
     },

@@ -11,6 +11,7 @@ import {
   ChipGroup,
   FormLabel,
   SliderInput,
+  Toast,
 } from "@/app/components/koifes/ui";
 
 const STEPS = 4;
@@ -19,6 +20,7 @@ export default function PostSurveyPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -35,8 +37,10 @@ export default function PostSurveyPage() {
   const [personalityTags, setPersonalityTags] = useState<string[]>([]);
   const [wantOthersEvaluation, setWantOthersEvaluation] = useState("");
   const [wantContactExchange, setWantContactExchange] = useState("");
-  const [contactTargets, setContactTargets] = useState("");
+  const [contactTargetNicknames, setContactTargetNicknames] = useState<string[]>([""]);
+  const [lineDisplayName, setLineDisplayName] = useState("");
   const [feedbackText, setFeedbackText] = useState("");
+  const [toast, setToast] = useState({ msg: "", show: false });
 
   const INTERESTED_COUNT_OPTIONS = ["0人", "1〜2人", "3〜5人", "6人以上"];
   const WANT_GROWTH_OPTIONS = ["とても思った", "少し思った", "あまり思わなかった", "全く思わなかった"];
@@ -55,14 +59,21 @@ export default function PostSurveyPage() {
         router.push("/login");
         return;
       }
-      const data = await load();
-      const user = data.users.find((u) => u.id === sid);
-      if (!user) {
-        router.push("/login");
-        return;
+      try {
+        const data = await load();
+        const user = data.users.find((u) => u.id === sid);
+        if (!user) {
+          router.push("/login");
+          return;
+        }
+        setUserId(user.id);
+        setLoadError(false);
+      } catch (err) {
+        console.error("[post-survey] load failed:", err);
+        setLoadError(true);
+      } finally {
+        setLoading(false);
       }
-      setUserId(user.id);
-      setLoading(false);
     })();
   }, [router]);
 
@@ -70,7 +81,12 @@ export default function PostSurveyPage() {
     if (step === 1) return true;
     if (step === 2) return !!interestedCount && !!wantGrowth && !!resistanceChange;
     if (step === 3) return !!attendAgain && personalityTags.length > 0;
-    if (step === 4) return !!wantOthersEvaluation && !!wantContactExchange && (wantContactExchange !== "はい" || !!contactTargets.trim());
+    if (step === 4) {
+      if (!wantOthersEvaluation || !wantContactExchange) return false;
+      if (wantContactExchange !== "はい") return true;
+      const hasNickname = contactTargetNicknames.some((n) => n.trim());
+      return hasNickname && !!lineDisplayName.trim();
+    }
     return false;
   };
 
@@ -94,24 +110,52 @@ export default function PostSurveyPage() {
           personality_tags: personalityTags.length ? personalityTags : null,
           want_others_evaluation: wantOthersEvaluation ? wantOthersEvaluation === "はい、知りたい" : null,
           want_contact_exchange: wantContactExchange ? wantContactExchange === "はい" : null,
-          contact_targets: contactTargets || null,
+          contact_targets: contactTargetNicknames.filter((n) => n.trim()).join("; ") || null,
           feedback_text: feedbackText || null,
           free_comment: feedbackText || null,
         },
         { onConflict: "user_id" }
       );
       if (error) throw error;
+
+      if (wantContactExchange === "はい" && contactTargetNicknames.some((n) => n.trim()) && lineDisplayName.trim()) {
+        const nicknames = contactTargetNicknames.filter((n) => n.trim());
+        for (const target of nicknames) {
+          const { error: exErr } = await supabase.from("koifes_contact_exchanges").insert({
+            from_user: userId,
+            target_nickname: target.trim(),
+            contact_info: lineDisplayName.trim(),
+          });
+          if (exErr) console.error("[post-survey] contact_exchanges insert failed:", exErr);
+        }
+      }
+
       setDone(true);
       setTimeout(() => router.push("/app"), 2000);
     } catch (err) {
       console.error("[post-survey] submit failed:", err);
-      alert("送信に失敗しました。もう一度お試しください。");
+      setToast({ msg: "送信に失敗しました。もう一度お試しください", show: true });
+      setTimeout(() => setToast({ msg: "", show: false }), 3000);
     } finally {
       setSubmitting(false);
     }
   };
 
   if (loading) {
+    if (loadError) {
+      return (
+        <div style={{ minHeight: "100vh", background: "#000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#fff", padding: 24, textAlign: "center" }}>
+          <p style={{ marginBottom: 16 }}>データの読み込みに失敗しました</p>
+          <p style={{ fontSize: 12, color: "#888", marginBottom: 24 }}>電波状況を確認して再読み込みしてください</p>
+          <button
+            onClick={() => { setLoading(true); setLoadError(false); window.location.reload(); }}
+            style={{ padding: "12px 24px", background: "#333", border: "1px solid #555", color: "#fff", borderRadius: 8, cursor: "pointer", fontSize: 13 }}
+          >
+            再読み込み
+          </button>
+        </div>
+      );
+    }
     return (
       <div style={{ minHeight: "100vh", background: "#000", display: "flex", alignItems: "center", justifyContent: "center", color: "#666", fontSize: 12 }}>
         読み込み中...
@@ -218,27 +262,112 @@ export default function PostSurveyPage() {
             </div>
 
             {wantContactExchange === "はい" && (
-              <div style={{ marginTop: 24 }}>
-                <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>
-                  連絡先を交換したい相手のニックネームまたはコード（4桁）を教えてください
-                </p>
-                <textarea
-                  value={contactTargets}
-                  onChange={(e) => setContactTargets(e.target.value)}
-                  placeholder="例：Aさん、B1234（複数可）"
-                  style={{
-                    width: "100%",
-                    minHeight: 80,
-                    padding: 12,
-                    background: "#111",
-                    border: "1px solid #333",
-                    borderRadius: 8,
-                    color: "#fff",
-                    fontSize: 14,
-                    resize: "vertical",
-                    fontFamily: "'Noto Sans JP', sans-serif",
-                  }}
-                />
+              <div
+                style={{
+                  marginTop: 24,
+                  padding: 20,
+                  background: "rgba(255,255,255,0.02)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: 12,
+                  animation: "slideDown 0.35s ease-out",
+                }}
+              >
+                <style>{`
+                  @keyframes slideDown {
+                    from { opacity: 0; transform: translateY(-12px); }
+                    to { opacity: 1; transform: translateY(0); }
+                  }
+                `}</style>
+
+                {/* 1. LINE表示名 */}
+                <div style={{ marginBottom: 24 }}>
+                  <FormLabel>あなたのLINE表示名</FormLabel>
+                  <p style={{ fontSize: 11, color: "#888", marginBottom: 10 }}>
+                    運営がマッチした方同士をLINEグループでお繋ぎします
+                  </p>
+                  <input
+                    value={lineDisplayName}
+                    onChange={(e) => setLineDisplayName(e.target.value)}
+                    placeholder="LINEの表示名を入力"
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      background: "#000",
+                      border: "1px solid rgba(255,255,255,0.2)",
+                      borderRadius: 8,
+                      color: "#fff",
+                      fontSize: 14,
+                      outline: "none",
+                      fontFamily: "'Noto Sans JP', sans-serif",
+                    }}
+                  />
+                </div>
+
+                {/* 2. 連絡先を交換したい相手 */}
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "#ccc", marginBottom: 12, letterSpacing: "0.05em" }}>連絡先を交換したい相手</p>
+                  {contactTargetNicknames.map((nick, i) => (
+                    <div key={i} style={{ display: "flex", gap: 8, marginBottom: 10, alignItems: "center" }}>
+                      <input
+                        value={nick}
+                        onChange={(e) => {
+                          const next = [...contactTargetNicknames];
+                          next[i] = e.target.value;
+                          setContactTargetNicknames(next);
+                        }}
+                        placeholder="相手のニックネーム"
+                        style={{
+                          flex: 1,
+                          padding: "12px 14px",
+                          background: "#000",
+                          border: "1px solid rgba(255,255,255,0.2)",
+                          borderRadius: 8,
+                          color: "#fff",
+                          fontSize: 14,
+                          outline: "none",
+                          fontFamily: "'Noto Sans JP', sans-serif",
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (contactTargetNicknames.length <= 1) return;
+                          setContactTargetNicknames(contactTargetNicknames.filter((_, j) => j !== i));
+                        }}
+                        disabled={contactTargetNicknames.length <= 1}
+                        style={{
+                          width: 40,
+                          height: 40,
+                          background: "transparent",
+                          border: "1px solid rgba(255,255,255,0.2)",
+                          borderRadius: 8,
+                          color: contactTargetNicknames.length <= 1 ? "#555" : "#999",
+                          fontSize: 18,
+                          cursor: contactTargetNicknames.length <= 1 ? "not-allowed" : "pointer",
+                          flexShrink: 0,
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setContactTargetNicknames([...contactTargetNicknames, ""])}
+                    style={{
+                      padding: "10px 0",
+                      background: "transparent",
+                      border: "none",
+                      color: gold,
+                      fontSize: 13,
+                      cursor: "pointer",
+                      fontFamily: "'Noto Sans JP', sans-serif",
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    ＋ もう1人追加
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -252,6 +381,7 @@ export default function PostSurveyPage() {
           )}
         </div>
       </div>
+      <Toast msg={toast.msg} show={toast.show} variant="error" />
     </div>
   );
 }

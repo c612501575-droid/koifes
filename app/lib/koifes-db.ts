@@ -185,7 +185,7 @@ function toRowUser(u: KoifesUser): Record<string, unknown> {
 export async function load(): Promise<KoifesDb> {
   try {
     const [usersRes, ratingsRes, connectionsRes, favoritesRes] = await Promise.all([
-      supabase.from("koifes_users_public").select("*"),
+      supabase.from("koifes_users").select("*"),
       supabase.from("koifes_ratings").select("*"),
       supabase.from("koifes_connections").select("*"),
       supabase.from("koifes_favorites").select("*"),
@@ -269,19 +269,10 @@ export async function addRating(rating: KoifesRating): Promise<void> {
 }
 
 export async function addConnection(conn: KoifesConnection): Promise<void> {
-  let { error } = await supabase.from("koifes_connections").insert({
+  const { error } = await supabase.from("koifes_connections").insert({
     from_user_id: conn.from,
     to_user_id: conn.to,
   });
-
-  // テーブル定義差異へのフォールバック（from_user / to_user）
-  if (error && /from_user_id|to_user_id/i.test(error.message || "")) {
-    const retry = await supabase.from("koifes_connections").insert({
-      from_user: conn.from,
-      to_user: conn.to,
-    });
-    error = retry.error;
-  }
 
   if (error) {
     // 重複時は無視（UNIQUE制約違反）

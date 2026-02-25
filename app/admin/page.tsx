@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { checkAdminAuth, clearAdminAuth } from "@/app/admin/login/page";
 import { gold } from "@/app/lib/koifes-constants";
 import { Header } from "@/app/components/koifes/ui";
 import { supabase } from "@/app/lib/supabase";
@@ -25,11 +24,12 @@ export default function AdminPage() {
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!checkAdminAuth()) {
-      router.replace("/admin/login");
-      return;
-    }
-    setAuthChecked(true);
+    fetch("/api/admin-auth", { credentials: "include", cache: "no-store" })
+      .then((res) => {
+        if (!res.ok) router.replace("/admin/login");
+        else setAuthChecked(true);
+      })
+      .catch(() => router.replace("/admin/login"));
   }, [router]);
 
   useEffect(() => {
@@ -286,7 +286,14 @@ export default function AdminPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#000", paddingBottom: 24, color: "#fff" }}>
-      <Header title="Admin" onLeft={() => { clearAdminAuth(); router.push("/admin/login"); }} />
+      <Header
+          title="Admin"
+          onLeft={() => {
+            fetch("/api/admin-auth", { method: "DELETE", credentials: "include" }).then(() =>
+              router.push("/admin/login")
+            );
+          }}
+        />
       <div style={{ display: "flex", gap: 1, margin: "16px 16px", background: "rgba(255,255,255,0.06)", padding: 2 }}>
         {Object.entries(tabs).map(([k, v]) => (
           <button

@@ -5,25 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { gold } from "@/app/lib/koifes-constants";
 
-const ADMIN_SESSION_KEY = "koifes-admin-auth";
-
-export function setAdminAuth() {
-  if (typeof window !== "undefined") {
-    sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
-  }
-}
-
-export function checkAdminAuth(): boolean {
-  if (typeof window === "undefined") return false;
-  return sessionStorage.getItem(ADMIN_SESSION_KEY) === "1";
-}
-
-export function clearAdminAuth() {
-  if (typeof window !== "undefined") {
-    sessionStorage.removeItem(ADMIN_SESSION_KEY);
-  }
-}
-
 export default function AdminLoginPage() {
   const router = useRouter();
   const [password, setPassword] = useState("");
@@ -33,18 +14,18 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setError("");
     try {
-      const res = await fetch("/api/admin/login", {
+      const res = await fetch("/api/admin-auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
         cache: "no-store",
+        credentials: "include",
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
         setError("パスワードが正しくありません");
         return;
       }
-      setAdminAuth();
       router.push("/admin");
       router.refresh();
     } catch {
