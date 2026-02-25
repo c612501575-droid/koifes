@@ -3,38 +3,90 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { load, loadSession, saveSession } from "@/app/lib/koifes-db";
+import { supabase } from "@/app/lib/supabase";
+import { getUserByEmail } from "@/app/lib/koifes-db";
 import { gold } from "@/app/lib/koifes-constants";
 import { BtnPrimary, BtnSecondary } from "@/app/components/koifes/ui";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [loginCode, setLoginCode] = useState("");
-  const [showLogin, setShowLogin] = useState(false);
+  const [email, setEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [step, setStep] = useState<"email" | "otp">("email");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
 
   useEffect(() => {
-    const savedId = loadSession();
-    if (savedId) {
-      router.replace("/app");
-    }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        router.refresh();
+      }
+    });
+    return () => subscription.unsubscribe();
   }, [router]);
 
-  const handleLogin = async () => {
-    if (loginCode.length !== 4) {
-      setError("4桁のコードを入力");
+  const handleSendOtp = async () => {
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setError("有効なメールアドレスを入力してください");
       return;
     }
     setError("");
-    const data = await load();
-    const found = data.users.find((u) => u.code === loginCode.toUpperCase());
-    if (found) {
-      saveSession(found.id);
-      router.push("/app");
+    setLoading(true);
+    try {
+      const { error: err } = await supabase.auth.signInWithOtp({
+        email: trimmed,
+        options: { shouldCreateUser: true },
+      });
+      if (err) {
+        setError(err.message || "コードの送信に失敗しました");
+        return;
+      }
+      setStep("otp");
+      setOtpCode("");
+      setError("");
+    } catch {
+      setError("送信に失敗しました。時間をおいて再度お試しください");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    const token = otpCode.replace(/\D/g, "");
+    if (token.length !== 6) {
+      setError("6桁のコードを入力してください");
+      return;
+    }
+    const trimmed = email.trim().toLowerCase();
+    setError("");
+    setLoading(true);
+    try {
+      const { data, error: err } = await supabase.auth.verifyOtp({
+        email: trimmed,
+        token,
+        type: "email",
+      });
+      if (err) {
+        setError(err.message || "コードが正しくありません");
+        return;
+      }
+      if (!data.user?.email) {
+        setError("認証に失敗しました");
+        return;
+      }
+      const koifesUser = await getUserByEmail(data.user.email);
       router.refresh();
-    } else {
-      setError("コードが見つかりません");
+      if (koifesUser) {
+        router.replace("/app");
+      } else {
+        router.replace("/register");
+      }
+    } catch {
+      setError("認証に失敗しました。もう一度お試しください");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -120,22 +172,66 @@ export default function LoginPage() {
         >
           2026
         </p>
-        {!showLogin ? (
-          <>
-            <Link
-              href="/register"
+
+        {step === "email" ? (
+          <div style={{ animation: "fadeIn 0.3s ease" }}>
+            <p
               style={{
-                width: "100%",
-                display: "block",
-                textDecoration: "none",
+                fontSize: 11,
+                letterSpacing: "0.15em",
+                color: "#999",
+                marginBottom: 20,
+                lineHeight: 1.8,
               }}
             >
-              <BtnPrimary>新規参加登録</BtnPrimary>
-            </Link>
-            <BtnSecondary onClick={() => setShowLogin(true)}>
-              コードでログイン
+              メールアドレスを入力してください
+              <br />
+              ログイン用の6桁コードをお送りします
+            </p>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setError("");
+              }}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              placeholder="you@example.com"
+              autoComplete="email"
+              style={{
+                width: "100%",
+                background: "transparent",
+                border: "none",
+                borderBottom: `1px solid ${error ? "#e55" : focused ? gold : "rgba(255,255,255,0.18)"}`,
+                color: "#fff",
+                fontFamily: "'Noto Sans JP', sans-serif",
+                fontSize: 16,
+                fontWeight: 400,
+                padding: "12px 0",
+                outline: "none",
+                textAlign: "center",
+                transition: "border-color 0.3s",
+                marginBottom: 8,
+              }}
+            />
+            {error && (
+              <p style={{ fontSize: 11, color: "#e55", marginBottom: 8 }}>{error}</p>
+            )}
+            <div style={{ marginTop: 16 }}>
+              <BtnPrimary onClick={handleSendOtp} disabled={loading || !email.trim()}>
+                {loading ? "送信中..." : "ログインコードを送信"}
+              </BtnPrimary>
+            </div>
+            <BtnSecondary
+              onClick={() => {
+                setError("");
+                setEmail("");
+              }}
+            >
+              クリア
             </BtnSecondary>
-          </>
+          </div>
         ) : (
           <div style={{ animation: "fadeIn 0.3s ease" }}>
             <p
@@ -147,20 +243,22 @@ export default function LoginPage() {
                 lineHeight: 1.8,
               }}
             >
-              登録時に発行された
+              {email} に送信した
               <br />
-              4桁のコードを入力
+              6桁のコードを入力
             </p>
             <input
-              value={loginCode}
+              value={otpCode}
               onChange={(e) => {
-                setLoginCode(e.target.value.toUpperCase());
+                setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6));
                 setError("");
               }}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
-              placeholder="A1B2"
-              maxLength={4}
+              placeholder="123456"
+              maxLength={6}
+              inputMode="numeric"
+              autoComplete="one-time-code"
               style={{
                 width: "100%",
                 background: "transparent",
@@ -179,29 +277,28 @@ export default function LoginPage() {
               }}
             />
             {error && (
-              <p style={{ fontSize: 11, color: "#e55", marginBottom: 8 }}>
-                {error}
-              </p>
+              <p style={{ fontSize: 11, color: "#e55", marginBottom: 8 }}>{error}</p>
             )}
             <div style={{ marginTop: 16 }}>
               <BtnPrimary
-                onClick={handleLogin}
-                disabled={loginCode.length < 4}
+                onClick={handleVerifyOtp}
+                disabled={loading || otpCode.replace(/\D/g, "").length !== 6}
               >
-                ログイン
+                {loading ? "確認中..." : "ログイン"}
               </BtnPrimary>
             </div>
             <BtnSecondary
               onClick={() => {
-                setShowLogin(false);
+                setStep("email");
+                setOtpCode("");
                 setError("");
-                setLoginCode("");
               }}
             >
-              戻る
+              メールを変更
             </BtnSecondary>
           </div>
         )}
+
         <Link
           href="/admin/login"
           style={{

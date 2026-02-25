@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { addUser, load, saveSession, type KoifesUser } from "@/app/lib/koifes-db";
+import { addUser, load, getKoifesUserByAuthId, type KoifesUser } from "@/app/lib/koifes-db";
 import {
   AGES,
   JOBS,
@@ -36,6 +36,7 @@ import {
   Toast,
   RankingSelector,
 } from "@/app/components/koifes/ui";
+import { supabase } from "@/app/lib/supabase";
 
 const TOTAL_STEPS = 5;
 const INIT_FORM = {
@@ -127,6 +128,21 @@ const STRENGTH_OPTIONS = [
 export default function RegisterPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
+  const [initCheck, setInitCheck] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.id) {
+        const existing = await getKoifesUserByAuthId(user.id);
+        if (existing) {
+          router.replace("/app");
+          return;
+        }
+      }
+      setInitCheck(false);
+    })();
+  }, [router]);
   const [form, setForm] = useState(INIT_FORM);
   const [agreed, setAgreed] = useState(false);
   const [agreedWarn, setAgreedWarn] = useState(false);
@@ -175,9 +191,16 @@ export default function RegisterPage() {
   const handleComplete = async () => {
     setToast({ msg: "", show: false });
     setSaving(true);
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser?.id) {
+      setToast({ msg: "セッションが切れました。ログイン画面から再度お試しください", show: true });
+      setSaving(false);
+      return;
+    }
     const newUser: KoifesUser = {
-      id: uid(),
+      id: authUser.id,
       code: code4(),
+      email: authUser.email ?? undefined,
       fullName: form.fullName,
       nickname: form.nickname,
       gender: form.gender,
@@ -219,15 +242,13 @@ export default function RegisterPage() {
       console.log("[register] Supabase への保存成功, id:", newId);
 
       // 保存確認：読み直してユーザーが存在するか確認
-      const db = await load();
-      const saved = db.users.find((u) => u.id === newId);
+      const saved = await getKoifesUserByAuthId(authUser.id);
       if (!saved) {
         console.warn("[register] 保存後の確認でユーザーが見つかりません。少し待ってからリダイレクトします。");
         await new Promise((r) => setTimeout(r, 500));
       }
 
-      saveSession(newId);
-      console.log("[register] セッション保存完了, 完了画面を3秒表示");
+      console.log("[register] 完了画面を3秒表示");
       setCompletedCode(newUser.code);
       setTimeout(() => {
         router.push("/app");
@@ -275,8 +296,8 @@ export default function RegisterPage() {
             <p style={{ fontSize: 15, fontWeight: 700, color: agreed ? "#ec4899" : "#fff", margin: "0 0 8px" }}>
               上記に同意して始める
             </p>
-            <p style={{ fontSize: 11, color: "#999", lineHeight: 1.8, margin: 0 }}>
-              入力いただいた情報は、イベント中のプロフィール交換および匿名統計データとして地域づくりに活用されます。イベント終了後、個人を特定できる情報は適切に管理されます。
+            <p style={{ fontSize: 12, color: "#999", lineHeight: 1.9, margin: 0 }}>
+              入力いただいた情報は、イベント中のプロフィール交換および匿名統計データとして地域づくりに活用されます。イベント終了後、個人を特定できる情報は適切に管理されます。連絡先情報は相互に希望した方同士の仲介にのみ使用します。
             </p>
             {agreedWarn && (
               <p style={{ fontSize: 12, color: "#f87171", marginTop: 10, fontWeight: 600 }}>
@@ -376,6 +397,14 @@ export default function RegisterPage() {
       <div style={{ marginBottom: 32 }}><FormLabel>会社が「美容や出会い」を支援してくれるなら、その会社への愛着や定住意向は上がりますか？</FormLabel><ChipGroup options={COMPANY_SUPPORT} value={form.companySupport} onChange={(v) => set("companySupport", v as string)} /></div>
     </div>,
   ];
+
+  if (initCheck) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#000", display: "flex", alignItems: "center", justifyContent: "center", color: "#666", fontSize: 12 }}>
+        読み込み中...
+      </div>
+    );
+  }
 
   if (completedCode) {
     return (

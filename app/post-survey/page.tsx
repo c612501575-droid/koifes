@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { load, loadSession } from "@/app/lib/koifes-db";
+import { load, getKoifesUserByAuthId } from "@/app/lib/koifes-db";
 import { supabase } from "@/app/lib/supabase";
 import { gold, faintLine2 } from "@/app/lib/koifes-constants";
 import {
@@ -54,16 +54,15 @@ export default function PostSurveyPage() {
 
   useEffect(() => {
     (async () => {
-      const sid = loadSession();
-      if (!sid) {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
         router.push("/login");
         return;
       }
       try {
-        const data = await load();
-        const user = data.users.find((u) => u.id === sid);
+        const user = await getKoifesUserByAuthId(authUser.id);
         if (!user) {
-          router.push("/login");
+          router.push("/register");
           return;
         }
         setUserId(user.id);

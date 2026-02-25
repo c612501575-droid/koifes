@@ -1,10 +1,9 @@
 import { supabase } from "./supabase";
 
-const SK_SESSION = "koifes-v5-session";
-
 export type KoifesUser = {
   id: string;
   code: string;
+  email?: string;
   fullName?: string;
   nickname?: string;
   gender?: string;
@@ -77,6 +76,7 @@ function toDbUser(row: Record<string, unknown>): KoifesUser {
   return {
     id: row.id as string,
     code: row.code as string,
+    email: row.email as string | undefined,
     fullName: row.full_name as string,
     nickname: row.nickname as string,
     gender: row.gender as string,
@@ -116,10 +116,12 @@ function toDbUser(row: Record<string, unknown>): KoifesUser {
 }
 
 function toDbRating(row: Record<string, unknown>): KoifesRating {
+  const from = (row.from_user_id ?? row.from_user ?? row.from) as string;
+  const to = (row.to_user_id ?? row.to_user ?? row.to) as string;
   return {
     id: row.id as string,
-    from: row.from_user_id as string,
-    to: row.to_user_id as string,
+    from,
+    to,
     impression: row.impression as number,
     ease: row.ease as number,
     again: row.again as string,
@@ -129,10 +131,13 @@ function toDbRating(row: Record<string, unknown>): KoifesRating {
 }
 
 function toDbConnection(row: Record<string, unknown>): KoifesConnection {
+  // マイグレーション: from_user_id/to_user_id。本番DBでは from_user/to_user の可能性あり
+  const from = (row.from_user_id ?? row.from_user ?? row.from) as string;
+  const to = (row.to_user_id ?? row.to_user ?? row.to) as string;
   return {
     id: row.id as string,
-    from: (row.from_user_id ?? row.from_user) as string,
-    to: (row.to_user_id ?? row.to_user) as string,
+    from,
+    to,
     createdAt: row.created_at as string,
   };
 }
@@ -145,6 +150,7 @@ function toRowUser(u: KoifesUser): Record<string, unknown> {
   return {
     id: u.id,
     code: u.code,
+    email: u.email ?? null,
     full_name: u.fullName,
     nickname: u.nickname,
     gender: u.gender,
@@ -192,7 +198,7 @@ export async function load(): Promise<KoifesDb> {
     ]);
 
     if (usersRes.error) {
-      console.error("[koifes-db] load users failed:", usersRes.error.message, usersRes.error.details);
+      console.error("[koifes-db] load users failed:", usersRes.error.message, usersRes.error.details, usersRes.error);
     }
     if (ratingsRes.error) {
       console.error("[koifes-db] load ratings failed:", ratingsRes.error.message, ratingsRes.error.details);
@@ -204,9 +210,20 @@ export async function load(): Promise<KoifesDb> {
       console.error("[koifes-db] load favorites failed:", favoritesRes.error.message, favoritesRes.error.details);
     }
 
+    const rawConnections = connectionsRes.data || [];
+    if (rawConnections.length > 0) {
+      const sample = rawConnections[0] as Record<string, unknown>;
+      console.log("[koifes-db] koifes_connections:", rawConnections.length, "件, カラム:", Object.keys(sample));
+    } else {
+      const hint = connectionsRes.error
+        ? `(エラー: ${connectionsRes.error.message})`
+        : "(0件: RLSポリシーが auth.uid() ベースの場合、未認証では取得不可)";
+      console.warn("[koifes-db] koifes_connections: 0件", hint);
+    }
+
     const users = (usersRes.data || []).map(toDbUser);
     const ratings = (ratingsRes.data || []).map(toDbRating);
-    const connections = (connectionsRes.data || []).map(toDbConnection);
+    const connections = rawConnections.map(toDbConnection);
     const favorites = (favoritesRes.data || []).map((f: Record<string, unknown>) => ({
       id: f.id as string,
       userId: f.user_id as string,
@@ -227,15 +244,54 @@ export async function saveUsers(users: KoifesUser[]): Promise<void> {
   }
 }
 
+/** auth.uid() またはメールで koifes_users を検索（認証後のユーザー取得用） */
+export async function getKoifesUserByAuthId(authId: string): Promise<KoifesUser | null> {
+  const { data, error } = await supabase
+    .from("koifes_users")
+    .select("*")
+    .eq("id", authId)
+    .maybeSingle();
+  if (error) {
+    console.error("[koifes-db] getKoifesUserByAuthId failed:", error.message);
+    return null;
+  }
+  if (!data) return null;
+  return toDbUser(data as Record<string, unknown>);
+}
+
+/** メールアドレスで koifes_users を検索 */
+export async function getUserByEmail(email: string): Promise<KoifesUser | null> {
+  const { data, error } = await supabase
+    .from("koifes_users")
+    .select("*")
+    .eq("email", email.toLowerCase().trim())
+    .maybeSingle();
+  if (error) {
+    console.error("[koifes-db] getUserByEmail failed:", error.message);
+    return null;
+  }
+  if (!data) return null;
+  return toDbUser(data as Record<string, unknown>);
+}
+
+/**
+ * 新規ユーザーを追加。id を渡す場合は auth.uid() を指定（新規登録時）。
+ * id を渡さない場合は DB が UUID を自動生成（従来互換）。
+ */
 export async function addUser(user: KoifesUser): Promise<string> {
   const row = toRowUser({ ...user, createdAt: new Date().toISOString() });
-  delete (row as Record<string, unknown>).id;
+  const id = user.id;
+  if (id) {
+    (row as Record<string, unknown>).id = id;
+  } else {
+    delete (row as Record<string, unknown>).id;
+  }
   const { data, error } = await supabase.from("koifes_users").insert(row).select("id").single();
   if (error) {
     console.error("[koifes-db] addUser failed:", error.message, error.details, error.hint);
     throw new Error(`ユーザー登録に失敗しました: ${error.message}`);
   }
-  const newId = (data?.id as string) ?? "";
+  const newId = (data?.id as string) ?? id ?? "";
   console.log("[koifes-db] addUser success:", newId);
   return newId;
 }
@@ -252,8 +308,8 @@ export async function updateUser(user: KoifesUser): Promise<void> {
 export async function addRating(rating: KoifesRating): Promise<void> {
   const overallScore = Math.round(((rating.impression + rating.ease + (Number(rating.again) || 0)) / 3) * 10) / 10;
   const payload = {
-    from_user: rating.from,
-    to_user: rating.to,
+    from_user_id: rating.from,
+    to_user_id: rating.to,
     impression: rating.impression,
     ease: rating.ease,
     again: rating.again != null ? String(rating.again) : null,
@@ -277,9 +333,11 @@ export async function addConnection(conn: KoifesConnection): Promise<void> {
   if (error) {
     // 重複時は無視（UNIQUE制約違反）
     if (error.code !== "23505") {
-      console.error("Connection insert error:", JSON.stringify(error));
+      console.error("[koifes-db] addConnection failed:", error.message, error.details);
       throw error;
     }
+  } else {
+    console.log("[koifes-db] addConnection success:", conn.from, "->", conn.to);
   }
 }
 
@@ -307,22 +365,14 @@ export async function toggleFavorite(userId: string, favoriteUserId: string): Pr
   }
 }
 
-export function saveSession(userId: string | null): void {
-  if (typeof window === "undefined") return;
-  try {
-    if (userId) {
-      localStorage.setItem(SK_SESSION, userId);
-    } else {
-      localStorage.removeItem(SK_SESSION);
-    }
-  } catch {}
-}
+/**
+ * @deprecated Supabase Auth セッションに移行済み。互換のため no-op。
+ */
+export function saveSession(_userId: string | null): void {}
 
+/**
+ * @deprecated Supabase Auth セッションに移行済み。互換のため常に null を返す。
+ */
 export function loadSession(): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return localStorage.getItem(SK_SESSION);
-  } catch {
-    return null;
-  }
+  return null;
 }

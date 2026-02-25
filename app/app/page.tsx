@@ -4,8 +4,7 @@ import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   load,
-  loadSession,
-  saveSession,
+  getKoifesUserByAuthId,
   addRating,
   addConnection,
   updateUser,
@@ -14,6 +13,7 @@ import {
   type KoifesDb,
 } from "@/app/lib/koifes-db";
 import { gold, faintLine, faintLine2, goldBorder, uid } from "@/app/lib/koifes-constants";
+import { supabase } from "@/app/lib/supabase";
 import {
   Header,
   BottomNav,
@@ -59,6 +59,7 @@ function AppPageContent() {
   const [target, setTarget] = useState<KoifesUser | null>(null);
   const [viewProfileFrom, setViewProfileFrom] = useState<"scan" | "history">("scan");
   const [historyFavoritesOnly, setHistoryFavoritesOnly] = useState(false);
+  const [optimisticFavToggles, setOptimisticFavToggles] = useState<Map<string, boolean>>(new Map());
   const [db, setDb] = useState<KoifesDb>({ users: [], ratings: [], connections: [], favorites: [] });
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState({ msg: "", show: false, variant: "success" as "success" | "error" });
@@ -77,25 +78,24 @@ function AppPageContent() {
   useEffect(() => {
     (async () => {
       try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) {
+          router.push("/login");
+          setLoading(false);
+          return;
+        }
         const data = await load();
         setDb(data);
         setLoadError(false);
-        const savedId = loadSession();
-        console.log("[app] loadSession:", savedId, "users count:", data.users.length);
-        if (savedId) {
-          const found = data.users.find((u) => u.id === savedId);
-          if (found) {
-            setUser(found);
-            const initialScreen = searchParams.get("screen") || "home";
-            setScreen(["home", "card", "scan", "profile"].includes(initialScreen) ? initialScreen : "home");
-            console.log("[app] ログイン成功, user:", found.nickname);
-          } else {
-            console.warn("[app] セッションのユーザーが見つかりません");
-            saveSession(null);
-            router.push("/login");
-          }
+        const found = await getKoifesUserByAuthId(authUser.id);
+        if (found) {
+          setUser(found);
+          const initialScreen = searchParams.get("screen") || "home";
+          setScreen(["home", "card", "scan", "profile"].includes(initialScreen) ? initialScreen : "home");
+          console.log("[app] ログイン成功, user:", found.nickname);
         } else {
-          router.push("/login");
+          console.warn("[app] koifes_users にユーザーが見つかりません → /register");
+          router.push("/register");
         }
       } catch (err) {
         console.error("[app] load failed:", err);
@@ -256,14 +256,13 @@ function AppPageContent() {
                 <p style={{ fontSize: 11, color: "rgba(0,0,0,0.6)", margin: "4px 0 0" }}>相手にスキャンしてもらいましょう</p>
               </div>
             </button>
-
             <button
               onClick={() => nav("scan")}
               style={{
                 width: "100%",
                 padding: "22px 20px",
-                background: "transparent",
-                border: "2px solid #c8a96e",
+                background: "linear-gradient(135deg, #c8a96e, #b8943e)",
+                border: "none",
                 borderRadius: 14,
                 cursor: "pointer",
                 display: "flex",
@@ -273,26 +272,25 @@ function AppPageContent() {
             >
               <span style={{ fontSize: 32 }}>📷</span>
               <div style={{ textAlign: "left" }}>
-                <p style={{ fontSize: 17, fontWeight: 700, color: "#c8a96e", margin: 0 }}>QRコードを読み取る</p>
-                <p style={{ fontSize: 11, color: "#888", margin: "4px 0 0" }}>相手のQRをスキャンしましょう</p>
+                <p style={{ fontSize: 17, fontWeight: 700, color: "#000", margin: 0 }}>QRコードを読み取る</p>
+                <p style={{ fontSize: 11, color: "rgba(0,0,0,0.6)", margin: "4px 0 0" }}>相手のQRをスキャンしましょう</p>
               </div>
             </button>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            {[
-              { id: "scan", icon: "⊡", title: "スキャン", desc: "相手のコードを\n読み取る" },
-              { id: "history", icon: "◇", title: "履歴", desc: "接続した人を\n確認する" },
-            ].map((a) => (
-              <button
-                key={a.id}
-                onClick={() => nav(a.id)}
-                style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.08)", padding: "28px 20px", cursor: "pointer", textAlign: "left" }}
-              >
-                <span style={{ fontSize: 24, display: "block", marginBottom: 14, color: gold }}>{a.icon}</span>
-                <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 16, fontWeight: 400, color: "#fff", marginBottom: 6, whiteSpace: "nowrap" }}>{a.title}</div>
-                <div style={{ fontSize: 11, color: "#666", lineHeight: 1.8, whiteSpace: "pre-line" }}>{a.desc}</div>
-              </button>
-            ))}
+            <button
+              onClick={() => nav("history")}
+              style={{
+                width: "100%",
+                background: "transparent",
+                border: "1px solid rgba(255,255,255,0.08)",
+                padding: "28px 20px",
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              <span style={{ fontSize: 24, display: "block", marginBottom: 14, color: gold }}>◇</span>
+              <div style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 16, fontWeight: 400, color: "#fff", marginBottom: 6, whiteSpace: "nowrap" }}>履歴</div>
+              <div style={{ fontSize: 11, color: "#666", lineHeight: 1.8, whiteSpace: "pre-line" }}>{"接続した人を\n確認する"}</div>
+            </button>
           </div>
           {/* === AFTER EVENT セクション === */}
           <div style={{ marginTop: 24 }}>
@@ -467,17 +465,28 @@ function AppPageContent() {
   // HistoryScreen
   if (screen === "history") {
     const favoriteIds = new Set((db.favorites || []).filter((f) => f.userId === user.id).map((f) => f.favoriteUserId));
-    const peers = db.connections
-      .filter((c) => c.from === user.id || c.to === user.id)
-      .map((c) => db.users.find((u) => u.id === (c.from === user.id ? c.to : c.from)))
-      .filter(Boolean) as KoifesUser[];
-    const visiblePeers = historyFavoritesOnly ? peers.filter((p) => favoriteIds.has(p.id)) : peers;
+    const getIsFav = (peerId: string) => {
+      const opt = optimisticFavToggles.get(peerId);
+      if (opt !== undefined) return opt;
+      return favoriteIds.has(peerId);
+    };
+    const myConns = db.connections.filter((c) => c.from === user.id || c.to === user.id);
+    const peersWithConn = myConns
+      .map((c) => {
+        const peerId = c.from === user.id ? c.to : c.from;
+        const peer = db.users.find((u) => u.id === peerId);
+        return peer ? { peer, conn: c } : null;
+      })
+      .filter(Boolean) as { peer: KoifesUser; conn: { createdAt?: string } }[];
+    const visiblePeersWithConn = historyFavoritesOnly
+      ? peersWithConn.filter((x) => getIsFav(x.peer.id))
+      : peersWithConn;
     return (
       <div style={{ minHeight: "100vh", background: "#000", paddingBottom: 80, color: "#fff" }}>
         <Header title="History" onLeft={() => nav("home")} />
         <div style={{ padding: 24, maxWidth: 480, margin: "0 auto" }}>
           <p style={{ fontSize: 12, letterSpacing: "0.4em", color: gold, marginBottom: 8 }}>CONNECTIONS</p>
-          <h2 style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 20, fontWeight: 400, marginBottom: 12 }}>接続した人：{peers.length}人</h2>
+          <h2 style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 20, fontWeight: 400, marginBottom: 12 }}>接続した人：{peersWithConn.length}人</h2>
           <button
             onClick={() => setHistoryFavoritesOnly((v) => !v)}
             style={{
@@ -493,7 +502,7 @@ function AppPageContent() {
           >
             {historyFavoritesOnly ? "♡ お気に入りのみ表示中" : "♡ お気に入りのみ表示"}
           </button>
-          {visiblePeers.length === 0 ? (
+          {visiblePeersWithConn.length === 0 ? (
             <div style={{ textAlign: "center", padding: "60px 0" }}>
               <p style={{ fontSize: 28, marginBottom: 16, opacity: 0.15 }}>◇</p>
               <p style={{ fontSize: 12, color: "#555" }}>
@@ -501,35 +510,103 @@ function AppPageContent() {
               </p>
             </div>
           ) : (
-            visiblePeers.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => {
-                  setTarget(p);
-                  setViewProfileFrom("history");
-                  setScreen("viewProfile");
-                }}
-                style={{
-                  width: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 16,
-                  padding: "16px 0",
-                  border: "none",
-                  borderBottom: `1px solid ${faintLine2}`,
-                  background: "transparent",
-                  textAlign: "left",
-                  cursor: "pointer",
-                }}
-              >
-                <div style={{ width: 44, height: 44, border: "1px solid rgba(255,255,255,0.12)", flexShrink: 0, background: "#111", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontFamily: "'Noto Sans JP', sans-serif", color: gold, fontStyle: "italic" }}>{p.nickname?.[0]}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 400, color: "#fff" }}>{p.nickname}</div>
-                  <div style={{ fontSize: 11, color: "#666", marginTop: 3 }}>{p.age} · {p.job}</div>
-                </div>
-                {favoriteIds.has(p.id) && <div style={{ color: gold, fontSize: 14, marginLeft: 8 }}>♡</div>}
-              </button>
-            ))
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {visiblePeersWithConn.map(({ peer: p, conn }) => {
+                const isFav = getIsFav(p.id);
+                const connDate = conn.createdAt
+                  ? new Date(conn.createdAt).toLocaleDateString("ja-JP", { month: "short", day: "numeric", year: "numeric" })
+                  : null;
+                return (
+                  <div
+                    key={p.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 24,
+                      padding: 24,
+                      margin: 0,
+                      background: "#1a1a1a",
+                      border: "1px solid rgba(255,255,255,0.18)",
+                      borderRadius: 12,
+                    }}
+                  >
+                    <button
+                      onClick={() => {
+                        setTarget(p);
+                        setViewProfileFrom("history");
+                        setScreen("viewProfile");
+                      }}
+                      style={{
+                        flex: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 20,
+                        padding: 0,
+                        border: "none",
+                        background: "transparent",
+                        textAlign: "left",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 64,
+                          height: 64,
+                          border: `1px solid ${goldBorder}`,
+                          flexShrink: 0,
+                          background: "#111",
+                          borderRadius: 8,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 24,
+                          fontFamily: "'Noto Sans JP', sans-serif",
+                          color: gold,
+                          fontStyle: "italic",
+                        }}
+                      >
+                        {p.nickname?.[0]}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 4 }}>{p.nickname}</div>
+                        <div style={{ fontSize: 14, color: "#ddd", marginBottom: connDate ? 4 : 0 }}>
+                          {[p.age, p.job].filter(Boolean).join(" · ")}
+                        </div>
+                        {connDate && (
+                          <div style={{ fontSize: 11, color: "#666", letterSpacing: "0.05em" }}>{connDate}</div>
+                        )}
+                      </div>
+                    </button>
+                    <HistoryHeartButton
+                      isFavorite={isFav}
+                      onToggle={async (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const newFav = !isFav;
+                        setOptimisticFavToggles((prev) => new Map(prev).set(p.id, newFav));
+                        try {
+                          await toggleFavorite(user.id, p.id);
+                          await refreshDb();
+                          setOptimisticFavToggles((prev) => {
+                            const n = new Map(prev);
+                            n.delete(p.id);
+                            return n;
+                          });
+                          showToast(newFav ? "お気に入りに追加しました" : "お気に入りを解除しました");
+                        } catch {
+                          setOptimisticFavToggles((prev) => {
+                            const n = new Map(prev);
+                            n.delete(p.id);
+                            return n;
+                          });
+                          showToast("保存に失敗しました", true);
+                        }
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
         <BottomNav active="home" onNav={nav} />
@@ -555,8 +632,8 @@ function AppPageContent() {
             }
           }}
           onNav={nav}
-          onLogout={() => {
-            saveSession(null);
+          onLogout={async () => {
+            await supabase.auth.signOut();
             router.push("/login");
           }}
         />
@@ -566,6 +643,46 @@ function AppPageContent() {
   }
 
   return null;
+}
+
+function HistoryHeartButton({
+  isFavorite,
+  onToggle,
+}: {
+  isFavorite: boolean;
+  onToggle: (e: React.MouseEvent) => void;
+}) {
+  const [animating, setAnimating] = useState(false);
+  const handleClick = (e: React.MouseEvent) => {
+    setAnimating(true);
+    onToggle(e);
+    setTimeout(() => setAnimating(false), 300);
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      style={{
+        flexShrink: 0,
+        width: 44,
+        height: 44,
+        minWidth: 44,
+        minHeight: 44,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "transparent",
+        border: "none",
+        cursor: "pointer",
+        color: isFavorite ? "#FF69B4" : "rgba(255,255,255,0.35)",
+        fontSize: 26,
+        transition: "transform 0.2s ease, color 0.2s ease",
+        transform: animating ? "scale(1.35)" : "scale(1)",
+      }}
+    >
+      {isFavorite ? "♥" : "♡"}
+    </button>
+  );
 }
 
 function ViewProfileContent({
@@ -588,6 +705,7 @@ function ViewProfileContent({
   showToast: (msg: string, isError?: boolean) => void;
 }) {
   const isFavorite = (db.favorites || []).some((f) => f.userId === user.id && f.favoriteUserId === target.id);
+  const myRating = (db.ratings || []).find((r) => r.from === user.id && r.to === target.id);
   const rows = [
       ["年齢", target.ageNumber ? `${target.ageNumber}歳` : target.age],
       ["職業", target.job],
@@ -633,9 +751,29 @@ function ViewProfileContent({
               <span style={{ fontSize: 13, textAlign: "right", marginLeft: 16, color: "#ccc", fontWeight: 400 }}>{v}</span>
             </div>
           ))}
+
+          {myRating && (
+            <div style={{ marginTop: 32, padding: "20px 0", borderTop: `1px solid ${faintLine2}` }}>
+              <p style={{ fontSize: 11, letterSpacing: "0.15em", color: "#555", marginBottom: 12 }}>あなたの評価メモ ※相手には表示されません</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, color: "#999" }}>
+                  <span>見た目</span>
+                  <span style={{ color: gold, fontWeight: 500 }}>{myRating.impression}/10</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, color: "#999" }}>
+                  <span>話しやすさ</span>
+                  <span style={{ color: gold, fontWeight: 500 }}>{myRating.ease}/10</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, color: "#999" }}>
+                  <span>ステータス</span>
+                  <span style={{ color: gold, fontWeight: 500 }}>{myRating.again ?? "-"}/10</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "linear-gradient(to top, #000 60%, transparent)", padding: "32px 24px 36px", maxWidth: 480, margin: "0 auto" }}>
-          <BtnPrimary onClick={() => setScreen("rate")}>この人を評価する →</BtnPrimary>
+          <BtnPrimary onClick={() => setScreen("rate")}>{myRating ? "評価を修正する →" : "この人を評価する →"}</BtnPrimary>
         </div>
       </div>
     );
@@ -666,15 +804,29 @@ function ScanScreen({
   const [error, setError] = useState("");
   const [focused, setFocused] = useState(false);
   const scannerRef = useRef<{ stop: () => Promise<void> } | null>(null);
+  const resolvingRef = useRef(false);
 
   const resolveCode = useCallback(
     async (decodedCode: string) => {
-      // QRコードは4桁コード（例: A1B2）またはURL埋め込みの可能性がある
+      if (resolvingRef.current) return;
       const raw = String(decodedCode || "").trim();
+      // 4桁コード抽出: ?code=XXXX | /code/XXXX | /u/XXXX | 最後の4桁英数字 | 先頭4桁
       const codeParam = raw.match(/[?&]code=([A-Za-z0-9]{4})/i);
+      const pathCode = raw.match(/\/(?:code|u)\/([A-Za-z0-9]{4})\b/i);
       const fourChar = raw.match(/([A-Z0-9]{4})/gi);
-      const codeStr = (codeParam?.[1] || fourChar?.[fourChar.length - 1] || raw.replace(/[^A-Z0-9]/gi, "").slice(0, 4) || "").toUpperCase();
-      if (codeStr.length < 4) return;
+      const codeStr = (
+        codeParam?.[1] ||
+        pathCode?.[1] ||
+        fourChar?.[fourChar.length - 1] ||
+        raw.replace(/[^A-Z0-9]/gi, "").slice(0, 4) ||
+        ""
+      ).toUpperCase();
+      if (codeStr.length < 4) {
+        console.warn("[ScanScreen] 4桁コードを抽出できませんでした raw:", raw.slice(0, 100));
+        onToast("QRコードの形式が正しくありません", true);
+        return;
+      }
+      resolvingRef.current = true;
       console.log("[ScanScreen] 解析したコード:", codeStr, "元データ:", raw.slice(0, 80));
       try {
         const data = await load();
@@ -683,15 +835,22 @@ function ScanScreen({
           if (scannerRef.current) {
             try {
               await scannerRef.current.stop();
-            } catch {}
+            } catch (e) {
+              console.warn("[QR] スキャナー停止時のエラー（無視可）:", e);
+            }
           }
           onFound(found);
         } else {
+          const codes = data.users.map((u) => (u.code || "").toUpperCase()).filter(Boolean);
+          console.warn("[ScanScreen] ユーザー未検出 code:", codeStr, "users:", data.users.length, "codes:", codes.slice(0, 10));
           setError("該当するユーザーが見つかりません");
+          onToast("該当するユーザーが見つかりません", true);
         }
       } catch (err) {
         console.error("[ScanScreen] resolveCode failed:", err);
         onToast("通信エラーが発生しました。電波状況を確認してください", true);
+      } finally {
+        resolvingRef.current = false;
       }
     },
     [user.id, onFound, onToast]
@@ -731,7 +890,9 @@ function ScanScreen({
         if (scannerRef.current) {
           try {
             await scannerRef.current.stop();
-          } catch {}
+          } catch (e) {
+            console.warn("[QR] スキャナー停止時のエラー（無視可）:", e);
+          }
           scannerRef.current = null;
         }
         if (mounted) setMode("fallback");
@@ -740,15 +901,27 @@ function ScanScreen({
     initScanner();
     return () => {
       mounted = false;
-      scannerRef.current?.stop().catch(() => {});
+      const scanner = scannerRef.current;
       scannerRef.current = null;
+      if (scanner) {
+        try {
+          scanner.stop().catch((e) => console.warn("[QR] スキャナー停止時のエラー（無視可）:", e));
+        } catch (e) {
+          console.warn("[QR] スキャナー停止時のエラー（無視可）:", e);
+        }
+      }
     };
   }, [resolveCode]);
 
   const showFallback = () => {
-    if (scannerRef.current) {
-      scannerRef.current.stop().catch(() => {});
-      scannerRef.current = null;
+    const scanner = scannerRef.current;
+    scannerRef.current = null;
+    if (scanner) {
+      try {
+        scanner.stop().catch((e) => console.warn("[QR] スキャナー停止時のエラー（無視可）:", e));
+      } catch (e) {
+        console.warn("[QR] スキャナー停止時のエラー（無視可）:", e);
+      }
     }
     setMode("fallback");
   };

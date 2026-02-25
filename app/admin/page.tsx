@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { gold } from "@/app/lib/koifes-constants";
 import { Header } from "@/app/components/koifes/ui";
-import { supabase } from "@/app/lib/supabase";
 
 const faintLine = "rgba(255,255,255,0.08)";
 
@@ -36,21 +35,21 @@ export default function AdminPage() {
     if (!authChecked) return;
     const loadAll = async () => {
       setLoading(true);
-      const [{ data: u }, { data: r }, { data: s }, { data: f }, { data: fo }, { data: c }] = await Promise.all([
-        supabase.from("koifes_users").select("*"),
-        supabase.from("koifes_ratings").select("*"),
-        supabase.from("koifes_post_surveys").select("*"),
-        supabase.from("koifes_favorites").select("*"),
-        supabase.from("koifes_followups").select("*"),
-        supabase.from("koifes_connections").select("*"),
-      ]);
-      setUsers((u || []) as Record<string, unknown>[]);
-      setRatings((r || []) as Record<string, unknown>[]);
-      setSurveys((s || []) as Record<string, unknown>[]);
-      setFavorites((f || []) as Record<string, unknown>[]);
-      setFollowups((fo || []) as Record<string, unknown>[]);
-      setConnections((c || []) as Record<string, unknown>[]);
-      setLoading(false);
+      try {
+        const res = await fetch("/api/admin-data", { credentials: "include", cache: "no-store" });
+        if (!res.ok) throw new Error("Failed to load");
+        const data = await res.json();
+        setUsers((data.users || []) as Record<string, unknown>[]);
+        setRatings((data.ratings || []) as Record<string, unknown>[]);
+        setSurveys((data.surveys || []) as Record<string, unknown>[]);
+        setFavorites((data.favorites || []) as Record<string, unknown>[]);
+        setFollowups((data.followups || []) as Record<string, unknown>[]);
+        setConnections((data.connections || []) as Record<string, unknown>[]);
+      } catch {
+        console.error("[admin] Failed to load data");
+      } finally {
+        setLoading(false);
+      }
     };
     loadAll();
   }, [authChecked]);

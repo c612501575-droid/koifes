@@ -1,54 +1,75 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
+import { updateSession } from "@/app/lib/supabase/middleware";
+import { createServerClient } from "@supabase/ssr";
 
-const COOKIE_NAME = "admin_token";
-const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7日間
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
 
-async function verifyToken(token: string): Promise<boolean> {
-  const secret = process.env.ADMIN_PASSWORD || "";
-  if (!secret) return false;
-  const parts = token.split(".");
-  if (parts.length !== 2) return false;
-  const [timestamp, sig] = parts;
-  const ts = parseInt(timestamp, 10);
-  if (isNaN(ts)) return false;
-  const age = Date.now() - ts;
-  if (age < 0 || age >= MAX_AGE_MS) return false;
+const PROTECTED_PATHS = ["/app", "/register", "/followup", "/post-survey"];
 
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const sigBuffer = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(timestamp)
-  );
-  const expected = Array.from(new Uint8Array(sigBuffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-  if (expected.length !== sig.length) return false;
-  let diff = 0;
-  for (let i = 0; i < expected.length; i++) {
-    diff |= expected.charCodeAt(i) ^ sig.charCodeAt(i);
-  }
-  return diff === 0;
+function isProtected(pathname: string): boolean {
+  return PROTECTED_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (pathname === "/admin/login") {
-    return NextResponse.next();
+
+  // 1. Supabase セッション更新
+  let response = await updateSession(request);
+
+  // 公開ルート
+  if (pathname === "/" || pathname === "/login" || pathname === "/admin/login") {
+    return response;
   }
+
+  // 2. /admin 配下（/admin/login 以外）: 管理者チェック
   if (pathname.startsWith("/admin")) {
-    const token = request.cookies.get(COOKIE_NAME)?.value;
-    if (!token || !(await verifyToken(token))) {
-      const login = new URL("/admin/login", request.url);
-      return NextResponse.redirect(login);
+    const supabase = createServerClient(supabaseUrl, supabaseKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
+        },
+      },
+    });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email) {
+      return NextResponse.redirect(new URL("/admin/login", request.url));
+    }
+    const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+    if (!adminEmails.includes(user.email.toLowerCase())) {
+      return NextResponse.redirect(new URL("/admin/login", request.url));
+    }
+    return response;
+  }
+
+  // 3. 一般保護ルート（/app, /register, /followup, /post-survey）
+  if (isProtected(pathname)) {
+    const supabase = createServerClient(supabaseUrl, supabaseKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
+        },
+      },
+    });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.redirect(new URL("/login", request.url));
     }
   }
-  return NextResponse.next();
+
+  return response;
 }
+
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+};

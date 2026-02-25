@@ -1,6 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
+// クライアント用 Supabase（Cookie ベースのセッション管理）
+// サーバー・API では app/lib/supabase/server.ts の createClient() を使用
+import { createClient } from "./supabase/client";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-export const supabase = createClient(supabaseUrl, supabaseKey)
+export const supabase = createClient();
