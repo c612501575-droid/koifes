@@ -15,6 +15,16 @@ export default function AdminPage() {
   const [favorites, setFavorites] = useState<Record<string, unknown>[]>([]);
   const [followups, setFollowups] = useState<Record<string, unknown>[]>([]);
   const [connections, setConnections] = useState<Record<string, unknown>[]>([]);
+  const [contactExchanges, setContactExchanges] = useState<Record<string, unknown>[]>([]);
+  const [aggregates, setAggregates] = useState<{
+    avgRatingByUser?: Record<string, number>;
+    wantReceivedByUser?: Record<string, number>;
+    wantGivenByUser?: Record<string, number>;
+    mutualCountByUser?: Record<string, number>;
+    topPartnerTagsByUser?: Record<string, string[]>;
+    mutualMatches?: Array<{ a: string; b: string; aScore?: number; bScore?: number; aReason?: string[]; bReason?: string[]; createdAt?: string }>;
+    popularityRanking?: Record<string, { byReceived: Array<{ id: string; count: number }>; byAvgRating: Array<{ id: string; avg: number }> }>;
+  }>({});
   const [tab, setTab] = useState("overview");
   const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
@@ -45,6 +55,8 @@ export default function AdminPage() {
         setFavorites((data.favorites || []) as Record<string, unknown>[]);
         setFollowups((data.followups || []) as Record<string, unknown>[]);
         setConnections((data.connections || []) as Record<string, unknown>[]);
+        setContactExchanges((data.contactExchanges || []) as Record<string, unknown>[]);
+        setAggregates(data.aggregates || {});
       } catch {
         console.error("[admin] Failed to load data");
       } finally {
@@ -85,9 +97,16 @@ export default function AdminPage() {
     overview: "Overview",
     users: "参加者一覧",
     ratings: "評価データ",
-    surveys: "アンケート結果",
+    matching: "マッチング",
+    surveys: "アンケート",
+    followups: "連絡先交換",
     export: "エクスポート",
   };
+
+  const ag = aggregates;
+  const wantYes = ratings.filter((r) => r.want_exchange === true).length;
+  const wantRate = ratings.length ? ((wantYes / ratings.length) * 100).toFixed(1) : "—";
+  const mutualCount = ag.mutualMatches?.length ?? 0;
 
   const userById = new Map(users.map((u) => [String(u.id || ""), u]));
   const filteredUsers = users.filter((u) => {
@@ -149,29 +168,41 @@ export default function AdminPage() {
     return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   };
 
-  const csvString = (data: Record<string, unknown>[]) => {
-    if (!data.length) return "";
-    const headers = Object.keys(data[0]);
-    return [
-      headers.join(","),
-      ...data.map((row) =>
-        headers
-          .map((h) => {
-            const val = row[h];
-            const str = Array.isArray(val) ? val.join(";") : String(val ?? "");
-            return `"${str.replace(/"/g, '""')}"`;
-          })
-          .join(",")
-      ),
-    ].join("\n");
+  const csvString = (data: Record<string, unknown>[], canonicalHeaders?: string[]) => {
+    const headers = canonicalHeaders && canonicalHeaders.length
+      ? canonicalHeaders
+      : data.length
+        ? Object.keys(data[0])
+        : [];
+    if (!headers.length) return "";
+    const row = (r: Record<string, unknown>) =>
+      headers
+        .map((h) => {
+          const val = r[h];
+          const str = Array.isArray(val) ? val.join(";") : String(val ?? "");
+          return `"${str.replace(/"/g, '""')}"`;
+        })
+        .join(",");
+    return [headers.join(","), ...data.map(row)].join("\n");
   };
 
-  const downloadCsv = (data: Record<string, unknown>[], filename: string) => {
-    if (!data.length) {
+  const CSV_HEADERS: Record<string, string[]> = {
+    koifes_users: ["id", "code", "email", "full_name", "nickname", "gender", "age", "age_number", "height", "siblings", "living_with_family", "job", "family", "income", "marriage", "marriage_by_when", "children", "children_by_when", "hobbies", "values", "dealbreakers", "unmarried_reasons", "event_exp", "esteem", "resistance", "invest", "weakness", "personality", "self_improvement", "improvement_confidence", "barrier_change", "stay_tokushima", "leave_reason", "stay_conditions", "buy_house", "housing_conditions", "company_support", "created_at"],
+    koifes_ratings: ["id", "from_user_id", "to_user_id", "impression", "ease", "again", "overall", "want_exchange", "exchange_reason", "reject_reason", "partner_tags", "duration_seconds", "created_at"],
+    koifes_post_surveys: ["id", "user_id", "post_esteem", "post_resistance", "post_barrier_change", "satisfaction", "fun_score", "comfort_score", "organization_score", "interested_count", "want_growth", "resistance_change", "self_discovery", "confidence_change", "communication_growth", "attend_again", "recommend_score", "recommend_reason", "loneliness_change", "community_feeling", "tokushima_impression_change", "marriage_motivation_change", "best_moment", "improvement_suggestion", "personality_tags", "want_others_evaluation", "want_contact_exchange", "contact_targets", "free_comment", "feedback_text", "created_at"],
+    koifes_followups: ["id", "from_user_id", "to_user_id", "want_contact", "contact_method", "message", "created_at"],
+    koifes_contact_exchanges: ["id", "from_user", "target_nickname", "contact_info", "created_at"],
+    koifes_connections: ["id", "from_user_id", "to_user_id", "created_at"],
+    koifes_favorites: ["id", "user_id", "favorite_user_id", "created_at"],
+  };
+
+  const downloadCsv = (data: Record<string, unknown>[], filename: string, tableKey?: string) => {
+    const headers = tableKey ? CSV_HEADERS[tableKey] : undefined;
+    const content = csvString(data, headers);
+    if (!content) {
       alert("ダウンロードできるデータがありません");
       return;
     }
-    const content = csvString(data);
     const blob = new Blob(["\uFEFF" + content], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -257,14 +288,50 @@ export default function AdminPage() {
     return new Blob([localBytes, centralBytes, end], { type: "application/zip" });
   };
 
+  const participantsWithAgg = users.map((u) => {
+    const uid = String(u.id);
+    return {
+      ...u,
+      被評価平均: ag.avgRatingByUser?.[uid]?.toFixed(1) ?? "",
+      交換希望された数: ag.wantReceivedByUser?.[uid] ?? "",
+      交換希望した数: ag.wantGivenByUser?.[uid] ?? "",
+      相互マッチ数: ag.mutualCountByUser?.[uid] ?? "",
+      もらったタグTOP3: (ag.topPartnerTagsByUser?.[uid] || []).join(" / "),
+    };
+  });
+
+  const mutualMatchesCsv = (ag.mutualMatches || []).map((m) => {
+    const uA = userById.get(m.a);
+    const uB = userById.get(m.b);
+    return {
+      "Aコード": uA?.code,
+      "Aニックネーム": uA?.nickname,
+      "Bコード": uB?.code,
+      "Bニックネーム": uB?.nickname,
+      "A→B評価": m.aScore,
+      "B→A評価": m.bScore,
+      "交換理由": [m.aReason, m.bReason].filter(Boolean).flat().join(" "),
+      日時: m.createdAt,
+    };
+  });
+
+  const popularityCsv = [
+    ...(ag.popularityRanking?.male?.byReceived || []).map((p, i) => ({ 性別: "男性", 順位: i + 1, ニックネーム: toCell(userById.get(p.id)?.nickname), 交換希望された数: p.count })),
+    ...(ag.popularityRanking?.female?.byReceived || []).map((p, i) => ({ 性別: "女性", 順位: i + 1, ニックネーム: toCell(userById.get(p.id)?.nickname), 交換希望された数: p.count })),
+  ];
+
   const downloadAllZip = () => {
     const files = [
-      { name: "koifes_users.csv", content: "\uFEFF" + csvString(users) },
-      { name: "koifes_ratings.csv", content: "\uFEFF" + csvString(ratings) },
-      { name: "koifes_post_surveys.csv", content: "\uFEFF" + csvString(surveys) },
-      { name: "koifes_favorites.csv", content: "\uFEFF" + csvString(favorites) },
-      { name: "koifes_followups.csv", content: "\uFEFF" + csvString(followups) },
-      { name: "koifes_connections.csv", content: "\uFEFF" + csvString(connections) },
+      { name: "participants.csv", content: "\uFEFF" + csvString(participantsWithAgg) },
+      { name: "koifes_users.csv", content: "\uFEFF" + csvString(users, CSV_HEADERS.koifes_users) },
+      { name: "koifes_ratings.csv", content: "\uFEFF" + csvString(ratings, CSV_HEADERS.koifes_ratings) },
+      { name: "mutual_matches.csv", content: "\uFEFF" + csvString(mutualMatchesCsv) },
+      { name: "koifes_post_surveys.csv", content: "\uFEFF" + csvString(surveys, CSV_HEADERS.koifes_post_surveys) },
+      { name: "koifes_followups.csv", content: "\uFEFF" + csvString(followups, CSV_HEADERS.koifes_followups) },
+      { name: "koifes_contact_exchanges.csv", content: "\uFEFF" + csvString(contactExchanges, CSV_HEADERS.koifes_contact_exchanges) },
+      { name: "koifes_connections.csv", content: "\uFEFF" + csvString(connections, CSV_HEADERS.koifes_connections) },
+      { name: "koifes_favorites.csv", content: "\uFEFF" + csvString(favorites, CSV_HEADERS.koifes_favorites) },
+      { name: "popularity_ranking.csv", content: "\uFEFF" + csvString(popularityCsv) },
     ];
     if (files.every((f) => !f.content || f.content === "\uFEFF")) {
       alert("ダウンロードできるデータがありません");
@@ -321,10 +388,14 @@ export default function AdminPage() {
               {[
                 { l: "総参加者", v: users.length },
                 { l: "男性/女性", v: `${male}/${female}` },
+                { l: "総評価数", v: ratings.length },
+                { l: "1人あたり平均", v: users.length ? (ratings.length / users.length).toFixed(1) : "—" },
+                { l: "総接続数", v: connections.length },
                 { l: "平均自己肯定感", v: avgEsteem, g: 1 },
                 { l: "平均評価", v: avgRating, g: 1 },
-                { l: "総接続数", v: connections.length },
-                { l: "総評価数", v: ratings.length },
+                { l: "交換希望率(はい)", v: `${wantRate}%`, g: 1 },
+                { l: "相互マッチ数", v: mutualCount, g: 1 },
+                { l: "連絡先申請", v: followups.length + contactExchanges.length },
               ].map((s, i) => (
                 <div key={i} style={{ border: `1px solid ${faintLine}`, padding: 16, textAlign: "center" }}>
                   <div style={{ fontSize: 24, fontWeight: 700, color: (s as { g?: number }).g ? gold : "#fff", marginBottom: 6 }}>{s.v}</div>
@@ -338,7 +409,8 @@ export default function AdminPage() {
                 <div>評価: <span style={{ color: gold }}>{ratings.length}</span></div>
                 <div>アンケート: <span style={{ color: gold }}>{surveys.length}</span></div>
                 <div>お気に入り: <span style={{ color: gold }}>{favorites.length}</span></div>
-                <div>連絡先交換: <span style={{ color: gold }}>{followups.length}</span></div>
+                <div>followups: <span style={{ color: gold }}>{followups.length}</span></div>
+                <div>contact_exchanges: <span style={{ color: gold }}>{contactExchanges.length}</span></div>
                 <div>接続: <span style={{ color: gold }}>{connections.length}</span></div>
               </div>
             </SC>
@@ -387,17 +459,19 @@ export default function AdminPage() {
                   <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
                     <thead>
                       <tr>
-                        {["コード", "氏名", "ニックネーム", "性別", "年齢区分", "実年齢", "身長", "職業", "年収帯"].map((h) => (
+                        {["コード", "氏名", "ニックネーム", "性別", "年齢区分", "実年齢", "身長", "職業", "年収帯", "被評価平均", "交換希望された数", "交換希望した数", "相互マッチ数", "もらったタグTOP3"].map((h) => (
                           <th key={h} style={thStyle}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredUsers.map((u) => (
+                      {filteredUsers.map((u) => {
+                        const uid = String(u.id);
+                        return (
                         <tr
-                          key={String(u.id)}
-                          onClick={() => setExpandedUserId((prev) => (prev === String(u.id) ? null : String(u.id)))}
-                          style={{ cursor: "pointer", background: expandedUserId === String(u.id) ? "rgba(200,169,110,0.08)" : "transparent" }}
+                          key={uid}
+                          onClick={() => setExpandedUserId((prev) => (prev === uid ? null : uid))}
+                          style={{ cursor: "pointer", background: expandedUserId === uid ? "rgba(200,169,110,0.08)" : "transparent" }}
                         >
                           <td style={tdStyle}>{toCell(u.code)}</td>
                           <td style={tdStyle}>{toCell(u.full_name)}</td>
@@ -408,8 +482,13 @@ export default function AdminPage() {
                           <td style={tdStyle}>{toCell(u.height)}</td>
                           <td style={tdStyle}>{toCell(u.job)}</td>
                           <td style={tdStyle}>{toCell(u.income)}</td>
+                          <td style={tdStyle}>{ag.avgRatingByUser?.[uid] != null ? ag.avgRatingByUser[uid].toFixed(1) : "—"}</td>
+                          <td style={tdStyle}>{ag.wantReceivedByUser?.[uid] ?? "—"}</td>
+                          <td style={tdStyle}>{ag.wantGivenByUser?.[uid] ?? "—"}</td>
+                          <td style={tdStyle}>{ag.mutualCountByUser?.[uid] ?? "—"}</td>
+                          <td style={tdStyle}>{(ag.topPartnerTagsByUser?.[uid] || []).join(" / ") || "—"}</td>
                         </tr>
-                      ))}
+                      );})}
                     </tbody>
                   </table>
                 </div>
@@ -422,7 +501,9 @@ export default function AdminPage() {
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                       <SC title="基本情報">
                         <DetailList rows={[
+                          ["ID", detailUser.id],
                           ["コード", detailUser.code],
+                          ["メール", detailUser.email],
                           ["氏名", detailUser.full_name],
                           ["ニックネーム", detailUser.nickname],
                           ["性別", detailUser.gender],
@@ -431,6 +512,7 @@ export default function AdminPage() {
                           ["身長", detailUser.height],
                           ["職業", detailUser.job],
                           ["年収帯", detailUser.income],
+                          ["登録日時", detailUser.created_at],
                         ]} />
                       </SC>
                       <SC title="家族・結婚">
@@ -448,6 +530,8 @@ export default function AdminPage() {
                         <DetailList rows={[
                           ["趣味", detailUser.hobbies],
                           ["価値観", detailUser.values],
+                          ["dealbreakers", detailUser.dealbreakers],
+                          ["未婚理由", detailUser.unmarried_reasons],
                           ["参加歴", detailUser.event_exp],
                         ]} />
                       </SC>
@@ -491,10 +575,10 @@ export default function AdminPage() {
               <p style={{ textAlign: "center", color: "#555", padding: 48, fontSize: 12 }}>評価データなし</p>
             ) : (
               <div style={tableWrapStyle}>
-                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1200 }}>
                   <thead>
                     <tr>
-                      {["評価者", "対象者", "見た目", "話しやすさ", "ステータス", "日時"].map((h) => (
+                      {["id", "評価者", "対象者", "見た目", "話しやすさ", "ステータス", "overall", "交換希望", "交換理由", "拒否理由", "相手タグ", "所要秒", "日時"].map((h) => (
                         <th key={h} style={thStyle}>{h}</th>
                       ))}
                     </tr>
@@ -505,13 +589,22 @@ export default function AdminPage() {
                       .map((r) => {
                         const from = userById.get(String(r.from_user_id || r.from || ""));
                         const to = userById.get(String(r.to_user_id || r.to || ""));
+                        const excReason = r.exchange_reason as string[] | null;
+                        const rejReason = r.reject_reason as string[] | null;
                         return (
                           <tr key={String(r.id)}>
-                            <td style={tdStyle}>{toCell(from?.nickname)}</td>
-                            <td style={tdStyle}>{toCell(to?.nickname)}</td>
+                            <td style={tdStyle}>{toCell(r.id)}</td>
+                            <td style={tdStyle}>{toCell(from?.nickname)} ({toCell(from?.code)})</td>
+                            <td style={tdStyle}>{toCell(to?.nickname)} ({toCell(to?.code)})</td>
                             <td style={tdStyle}>{toCell(r.impression)}</td>
                             <td style={tdStyle}>{toCell(r.ease)}</td>
                             <td style={tdStyle}>{toCell(r.again)}</td>
+                            <td style={tdStyle}>{toCell(r.overall)}</td>
+                            <td style={tdStyle}>{r.want_exchange === true ? "はい" : r.want_exchange === false ? "いいえ" : "—"}</td>
+                            <td style={tdStyle}>{Array.isArray(excReason) ? excReason.join(" ") : "—"}</td>
+                            <td style={tdStyle}>{Array.isArray(rejReason) ? rejReason.join(" ") : "—"}</td>
+                            <td style={tdStyle}>{Array.isArray(r.partner_tags) ? (r.partner_tags as string[]).join(" ") : "—"}</td>
+                            <td style={tdStyle}>{toCell(r.duration_seconds)}</td>
                             <td style={tdStyle}>{formatDate(r.created_at || r.createdAt)}</td>
                           </tr>
                         );
@@ -523,29 +616,111 @@ export default function AdminPage() {
           </div>
         )}
 
+        {tab === "matching" && (
+          <div>
+            <SC title="相互マッチ一覧">
+              {(ag.mutualMatches?.length ?? 0) === 0 ? (
+                <p style={{ color: "#555", fontSize: 12 }}>相互マッチなし</p>
+              ) : (
+                <div style={tableWrapStyle}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        <th style={thStyle}>ペア（A ↔ B）</th>
+                        <th style={thStyle}>A→B評価</th>
+                        <th style={thStyle}>B→A評価</th>
+                        <th style={thStyle}>交換理由</th>
+                        <th style={thStyle}>日時</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ag.mutualMatches?.map((m, i) => {
+                        const uA = userById.get(m.a);
+                        const uB = userById.get(m.b);
+                        return (
+                          <tr key={i}>
+                            <td style={tdStyle}>
+                              {toCell(uA?.nickname)}（{toCell(uA?.code)}） ↔ {toCell(uB?.nickname)}（{toCell(uB?.code)}）
+                            </td>
+                            <td style={tdStyle}>{m.aScore?.toFixed(1) ?? "—"}</td>
+                            <td style={tdStyle}>{m.bScore?.toFixed(1) ?? "—"}</td>
+                            <td style={tdStyle}>
+                              {[m.aReason, m.bReason].filter(Boolean).map((r) => Array.isArray(r) ? r.join(", ") : "").join(" / ")}
+                            </td>
+                            <td style={tdStyle}>{formatDate(m.createdAt)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </SC>
+            <SC title="人気ランキング（交換希望された数TOP20）">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+                <div>
+                  <div style={{ fontSize: 12, color: gold, marginBottom: 8 }}>男性</div>
+                  {(ag.popularityRanking?.male?.byReceived || []).map((p, i) => {
+                    const u = userById.get(p.id);
+                    return <div key={p.id} style={{ fontSize: 12, marginBottom: 4 }}>{i + 1}. {toCell(u?.nickname)} — {p.count}件</div>;
+                  })}
+                  {(ag.popularityRanking?.male?.byReceived?.length ?? 0) === 0 && <div style={{ fontSize: 12, color: "#555" }}>なし</div>}
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, color: gold, marginBottom: 8 }}>女性</div>
+                  {(ag.popularityRanking?.female?.byReceived || []).map((p, i) => {
+                    const u = userById.get(p.id);
+                    return <div key={p.id} style={{ fontSize: 12, marginBottom: 4 }}>{i + 1}. {toCell(u?.nickname)} — {p.count}件</div>;
+                  })}
+                  {(ag.popularityRanking?.female?.byReceived?.length ?? 0) === 0 && <div style={{ fontSize: 12, color: "#555" }}>なし</div>}
+                </div>
+              </div>
+            </SC>
+          </div>
+        )}
+
         {tab === "surveys" && (
           <div>
             {surveys.length === 0 ? (
               <p style={{ textAlign: "center", color: "#555", padding: 48, fontSize: 12 }}>アンケート回答なし</p>
             ) : (
               <div style={tableWrapStyle}>
-                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1400 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 2200 }}>
                   <thead>
                     <tr>
                       {[
+                        "id",
+                        "user_id",
                         "回答者",
-                        "満足度",
-                        "楽しさ",
-                        "居心地",
-                        "運営",
-                        "気になった人数",
-                        "成長意欲",
-                        "自己肯定感",
-                        "抵抗感変化",
-                        "再参加",
-                        "周りの評価",
-                        "他者評価希望",
-                        "自由記述",
+                        "post_esteem",
+                        "post_resistance",
+                        "post_barrier_change",
+                        "satisfaction",
+                        "fun_score",
+                        "comfort_score",
+                        "organization_score",
+                        "interested_count",
+                        "want_growth",
+                        "resistance_change",
+                        "self_discovery",
+                        "confidence_change",
+                        "communication_growth",
+                        "attend_again",
+                        "recommend_score",
+                        "recommend_reason",
+                        "loneliness_change",
+                        "community_feeling",
+                        "tokushima_impression_change",
+                        "marriage_motivation_change",
+                        "best_moment",
+                        "improvement_suggestion",
+                        "personality_tags",
+                        "want_others_evaluation",
+                        "want_contact_exchange",
+                        "contact_targets",
+                        "free_comment",
+                        "feedback_text",
+                        "created_at",
                       ].map((h) => (
                         <th key={h} style={thStyle}>{h}</th>
                       ))}
@@ -556,19 +731,38 @@ export default function AdminPage() {
                       const u = userById.get(String(s.user_id || ""));
                       return (
                         <tr key={String(s.id)}>
+                          <td style={tdStyle}>{toCell(s.id)}</td>
+                          <td style={tdStyle}>{toCell(s.user_id)}</td>
                           <td style={tdStyle}>{toCell(u?.nickname)}</td>
+                          <td style={tdStyle}>{toCell(s.post_esteem)}</td>
+                          <td style={tdStyle}>{toCell(s.post_resistance)}</td>
+                          <td style={tdStyle}>{toCell(s.post_barrier_change)}</td>
                           <td style={tdStyle}>{toCell(s.satisfaction)}</td>
                           <td style={tdStyle}>{toCell(s.fun_score)}</td>
                           <td style={tdStyle}>{toCell(s.comfort_score)}</td>
                           <td style={tdStyle}>{toCell(s.organization_score)}</td>
                           <td style={tdStyle}>{toCell(s.interested_count)}</td>
                           <td style={tdStyle}>{toCell(s.want_growth)}</td>
-                          <td style={tdStyle}>{toCell(s.post_esteem)}</td>
-                          <td style={tdStyle}>{toCell(s.resistance_change || s.post_barrier_change)}</td>
+                          <td style={tdStyle}>{toCell(s.resistance_change)}</td>
+                          <td style={tdStyle}>{toCell(s.self_discovery)}</td>
+                          <td style={tdStyle}>{toCell(s.confidence_change)}</td>
+                          <td style={tdStyle}>{toCell(s.communication_growth)}</td>
                           <td style={tdStyle}>{toCell(s.attend_again)}</td>
+                          <td style={tdStyle}>{toCell(s.recommend_score)}</td>
+                          <td style={tdStyle}>{toCell(s.recommend_reason)}</td>
+                          <td style={tdStyle}>{toCell(s.loneliness_change)}</td>
+                          <td style={tdStyle}>{toCell(s.community_feeling)}</td>
+                          <td style={tdStyle}>{toCell(s.tokushima_impression_change)}</td>
+                          <td style={tdStyle}>{toCell(s.marriage_motivation_change)}</td>
+                          <td style={{ ...tdStyle, whiteSpace: "normal" }}>{toCell(s.best_moment)}</td>
+                          <td style={{ ...tdStyle, whiteSpace: "normal" }}>{toCell(s.improvement_suggestion)}</td>
                           <td style={tdStyle}>{toCell(s.personality_tags)}</td>
                           <td style={tdStyle}>{toCell((s.want_others_evaluation as boolean | null) == null ? null : ((s.want_others_evaluation as boolean) ? "はい" : "いいえ"))}</td>
-                          <td style={{ ...tdStyle, whiteSpace: "normal", minWidth: 220 }}>{toCell(s.feedback_text || s.free_comment)}</td>
+                          <td style={tdStyle}>{toCell(s.want_contact_exchange)}</td>
+                          <td style={tdStyle}>{toCell(s.contact_targets)}</td>
+                          <td style={{ ...tdStyle, whiteSpace: "normal", minWidth: 180 }}>{toCell(s.free_comment)}</td>
+                          <td style={{ ...tdStyle, whiteSpace: "normal", minWidth: 180 }}>{toCell(s.feedback_text)}</td>
+                          <td style={tdStyle}>{formatDate(s.created_at)}</td>
                         </tr>
                       );
                     })}
@@ -579,14 +773,158 @@ export default function AdminPage() {
           </div>
         )}
 
+        {tab === "followups" && (
+          <div>
+            <SC title="followups（連絡先交換申請）">
+              {followups.length === 0 ? (
+                <p style={{ color: "#555", fontSize: 12 }}>データなし</p>
+              ) : (
+                <div style={tableWrapStyle}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        {["id", "from_user_id", "申請者", "to_user_id", "対象者", "want_contact", "contact_method", "message", "created_at"].map((h) => (
+                          <th key={h} style={thStyle}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {followups.map((f) => {
+                        const from = userById.get(String(f.from_user_id || ""));
+                        const to = userById.get(String(f.to_user_id || ""));
+                        return (
+                          <tr key={String(f.id)}>
+                            <td style={tdStyle}>{toCell(f.id)}</td>
+                            <td style={tdStyle}>{toCell(f.from_user_id)}</td>
+                            <td style={tdStyle}>{toCell(from?.nickname)} ({toCell(from?.code)})</td>
+                            <td style={tdStyle}>{toCell(f.to_user_id)}</td>
+                            <td style={tdStyle}>{toCell(to?.nickname)} ({toCell(to?.code)})</td>
+                            <td style={tdStyle}>{toCell(f.want_contact)}</td>
+                            <td style={tdStyle}>{toCell(f.contact_method)}</td>
+                            <td style={{ ...tdStyle, whiteSpace: "normal", maxWidth: 200 }}>{toCell(f.message)}</td>
+                            <td style={tdStyle}>{formatDate(f.created_at)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </SC>
+            <SC title="contact_exchanges（アンケート経由の連絡先交換）">
+              {contactExchanges.length === 0 ? (
+                <p style={{ color: "#555", fontSize: 12 }}>データなし</p>
+              ) : (
+                <div style={tableWrapStyle}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        {["id", "from_user", "申請者", "target_nickname", "contact_info", "created_at"].map((h) => (
+                          <th key={h} style={thStyle}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {contactExchanges.map((c) => {
+                        const from = userById.get(String(c.from_user || ""));
+                        return (
+                          <tr key={String(c.id)}>
+                            <td style={tdStyle}>{toCell(c.id)}</td>
+                            <td style={tdStyle}>{toCell(c.from_user)}</td>
+                            <td style={tdStyle}>{toCell(from?.nickname)} ({toCell(from?.code)})</td>
+                            <td style={tdStyle}>{toCell(c.target_nickname)}</td>
+                            <td style={tdStyle}>{toCell(c.contact_info)}</td>
+                            <td style={tdStyle}>{formatDate(c.created_at)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </SC>
+            <SC title="connections（接続）">
+              {connections.length === 0 ? (
+                <p style={{ color: "#555", fontSize: 12 }}>データなし</p>
+              ) : (
+                <div style={tableWrapStyle}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        {["id", "from_user_id", "申請者", "to_user_id", "対象者", "created_at"].map((h) => (
+                          <th key={h} style={thStyle}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {connections.map((c) => {
+                        const from = userById.get(String(c.from_user_id || c.from_user || ""));
+                        const to = userById.get(String(c.to_user_id || c.to_user || ""));
+                        return (
+                          <tr key={String(c.id)}>
+                            <td style={tdStyle}>{toCell(c.id)}</td>
+                            <td style={tdStyle}>{toCell(c.from_user_id || c.from_user)}</td>
+                            <td style={tdStyle}>{toCell(from?.nickname)} ({toCell(from?.code)})</td>
+                            <td style={tdStyle}>{toCell(c.to_user_id || c.to_user)}</td>
+                            <td style={tdStyle}>{toCell(to?.nickname)} ({toCell(to?.code)})</td>
+                            <td style={tdStyle}>{formatDate(c.created_at)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </SC>
+            <SC title="favorites（お気に入り）">
+              {favorites.length === 0 ? (
+                <p style={{ color: "#555", fontSize: 12 }}>データなし</p>
+              ) : (
+                <div style={tableWrapStyle}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        {["id", "user_id", "登録者", "favorite_user_id", "お気に入り相手", "created_at"].map((h) => (
+                          <th key={h} style={thStyle}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {favorites.map((f) => {
+                        const u = userById.get(String(f.user_id || ""));
+                        const fav = userById.get(String(f.favorite_user_id || ""));
+                        return (
+                          <tr key={String(f.id)}>
+                            <td style={tdStyle}>{toCell(f.id)}</td>
+                            <td style={tdStyle}>{toCell(f.user_id)}</td>
+                            <td style={tdStyle}>{toCell(u?.nickname)} ({toCell(u?.code)})</td>
+                            <td style={tdStyle}>{toCell(f.favorite_user_id)}</td>
+                            <td style={tdStyle}>{toCell(fav?.nickname)} ({toCell(fav?.code)})</td>
+                            <td style={tdStyle}>{formatDate(f.created_at)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </SC>
+          </div>
+        )}
+
         {tab === "export" && (
           <div style={{ display: "grid", gap: 10 }}>
-            <ExportBtn label="参加者データをCSVでダウンロード" onClick={() => downloadCsv(users, "koifes_users")} />
-            <ExportBtn label="評価データをCSVでダウンロード" onClick={() => downloadCsv(ratings, "koifes_ratings")} />
-            <ExportBtn label="アンケート結果をCSVでダウンロード" onClick={() => downloadCsv(surveys, "koifes_post_surveys")} />
-            <ExportBtn label="お気に入りデータをCSVでダウンロード" onClick={() => downloadCsv(favorites, "koifes_favorites")} />
-            <ExportBtn label="連絡先交換データをCSVでダウンロード" onClick={() => downloadCsv(followups, "koifes_followups")} />
-            <ExportBtn label="全データ一括ダウンロード" onClick={downloadAllZip} />
+            <ExportBtn label="participants.csv（参加者+集計）" onClick={() => downloadCsv(participantsWithAgg, "participants")} />
+            <ExportBtn label="koifes_users.csv（参加者生データ）" onClick={() => downloadCsv(users, "koifes_users", "koifes_users")} />
+            <ExportBtn label="ratings.csv（評価データ）" onClick={() => downloadCsv(ratings, "koifes_ratings", "koifes_ratings")} />
+            <ExportBtn label="mutual_matches.csv（相互マッチ）" onClick={() => downloadCsv(mutualMatchesCsv, "mutual_matches")} />
+            <ExportBtn label="surveys.csv（アンケート）" onClick={() => downloadCsv(surveys, "koifes_post_surveys", "koifes_post_surveys")} />
+            <ExportBtn label="followups.csv（連絡先申請）" onClick={() => downloadCsv(followups, "koifes_followups", "koifes_followups")} />
+            <ExportBtn label="contact_exchanges.csv" onClick={() => downloadCsv(contactExchanges, "koifes_contact_exchanges", "koifes_contact_exchanges")} />
+            <ExportBtn label="connections.csv" onClick={() => downloadCsv(connections, "koifes_connections", "koifes_connections")} />
+            <ExportBtn label="favorites.csv" onClick={() => downloadCsv(favorites, "koifes_favorites", "koifes_favorites")} />
+            <ExportBtn label="popularity_ranking.csv" onClick={() => downloadCsv(popularityCsv, "popularity_ranking")} />
+            <ExportBtn label="全CSV一括ダウンロード（ZIP）" onClick={downloadAllZip} />
           </div>
         )}
       </div>

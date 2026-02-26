@@ -51,6 +51,9 @@ export type KoifesRating = {
   overall: number;
   wantExchange?: boolean;
   exchangeReason?: string[];
+  rejectReason?: string[];
+  partnerTags?: string[];
+  durationSeconds?: number;
   createdAt: string;
 };
 
@@ -124,6 +127,8 @@ function toDbRating(row: Record<string, unknown>): KoifesRating {
   const from = (row.from_user_id ?? row.from_user ?? row.from) as string;
   const to = (row.to_user_id ?? row.to_user ?? row.to) as string;
   const reasons = row.exchange_reason;
+  const rejectReasons = row.reject_reason;
+  const tags = row.partner_tags;
   return {
     id: row.id as string,
     from,
@@ -134,6 +139,9 @@ function toDbRating(row: Record<string, unknown>): KoifesRating {
     overall: Number(row.overall),
     wantExchange: row.want_exchange as boolean | undefined,
     exchangeReason: Array.isArray(reasons) ? (reasons as string[]) : undefined,
+    rejectReason: Array.isArray(rejectReasons) ? (rejectReasons as string[]) : undefined,
+    partnerTags: Array.isArray(tags) ? (tags as string[]) : undefined,
+    durationSeconds: row.duration_seconds as number | undefined,
     createdAt: row.created_at as string,
   };
 }
@@ -329,6 +337,9 @@ export async function addRating(rating: KoifesRating): Promise<void> {
     overall: overallScore,
     want_exchange: rating.wantExchange ?? null,
     exchange_reason: (rating.exchangeReason && rating.exchangeReason.length > 0) ? rating.exchangeReason : null,
+    reject_reason: (rating.rejectReason && rating.rejectReason.length > 0) ? rating.rejectReason : null,
+    partner_tags: (rating.partnerTags && rating.partnerTags.length > 0) ? rating.partnerTags : null,
+    duration_seconds: rating.durationSeconds ?? null,
   };
   console.log("[koifes-db] addRating payload:", payload);
   const { error } = await supabase.from("koifes_ratings").insert(payload);
@@ -339,13 +350,15 @@ export async function addRating(rating: KoifesRating): Promise<void> {
   }
 }
 
-export async function updateRatingExchange(ratingId: string, wantExchange: boolean, exchangeReason: string[]): Promise<void> {
+export async function updateRatingExchange(ratingId: string, wantExchange: boolean, reasons: string[]): Promise<void> {
+  const update = {
+    want_exchange: wantExchange,
+    exchange_reason: wantExchange && reasons.length > 0 ? reasons : null,
+    reject_reason: !wantExchange && reasons.length > 0 ? reasons : null,
+  };
   const { error } = await supabase
     .from("koifes_ratings")
-    .update({
-      want_exchange: wantExchange,
-      exchange_reason: exchangeReason.length > 0 ? exchangeReason : null,
-    })
+    .update(update)
     .eq("id", ratingId);
   if (error) {
     console.error("[koifes-db] updateRatingExchange failed:", error.message);
@@ -364,6 +377,9 @@ export async function updateRating(rating: KoifesRating): Promise<void> {
       overall: overallScore,
       want_exchange: rating.wantExchange ?? null,
       exchange_reason: (rating.exchangeReason && rating.exchangeReason.length > 0) ? rating.exchangeReason : null,
+      reject_reason: (rating.rejectReason && rating.rejectReason.length > 0) ? rating.rejectReason : null,
+      partner_tags: (rating.partnerTags && rating.partnerTags.length > 0) ? rating.partnerTags : null,
+      duration_seconds: rating.durationSeconds ?? null,
     })
     .eq("id", rating.id);
   if (error) {

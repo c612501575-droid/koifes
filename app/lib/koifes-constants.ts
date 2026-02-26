@@ -21,8 +21,22 @@ export const STAY_CONDITIONS = ["家賃補助", "若者コミュニティ", "出
 export const HOUSING_CONDS = ["広さ", "価格の安さ", "リノベ済み", "駅・学校の近さ", "実家との距離", "新築"];
 export const COMPANY_SUPPORT = ["かなり上がる", "少し上がる", "変わらない", "あまり関係ない"];
 
-export const EXCHANGE_REASON_YES = ["もっと話したい", "趣味が合いそう", "フィーリングが合った", "見た目がタイプ", "一緒にいて楽しかった", "その他"];
-export const EXCHANGE_REASON_NO = ["あまり話が合わなかった", "タイプではなかった", "緊張してうまく話せなかった", "もう少し時間が欲しかった", "特に理由はない", "その他"];
+/** 連絡先交換「はい」の理由 */
+export const EXCHANGE_REASON_YES = ["話が合った", "雰囲気が好き", "また会いたい", "フィーリングが合った", "価値観が近い", "見た目がタイプ", "その他"];
+/** 連絡先交換「いいえ」の理由（reject_reason用） */
+export const REJECT_REASON = [
+  "あまり話が合わなかった",
+  "タイプではなかった",
+  "緊張してうまく話せなかった",
+  "もう少し時間が欲しかった",
+  "友達としてなら良い",
+  "価値観が違うと感じた",
+  "その他",
+];
+/** 後方互換: 履歴編集用（REJECT_REASON と同一） */
+export const EXCHANGE_REASON_NO = REJECT_REASON;
+/** 相手への一言タグ */
+export const PARTNER_TAGS = ["面白い", "優しい", "話しやすい", "クール", "積極的", "落ち着いてる", "明るい", "真面目", "おしゃれ", "知的"];
 
 export const gold = "#c8a96e";
 export const goldFade = "rgba(200,169,110,0.12)";
