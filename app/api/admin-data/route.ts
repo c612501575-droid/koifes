@@ -61,7 +61,7 @@ export async function GET() {
       if (r.want_exchange !== true) continue;
       const from = String(r.from_user_id);
       const to = String(r.to_user_id);
-      const rev = ratings.find((x: { from_user_id: string; to_user_id: string }) => x.from_user_id === to && x.to_user_id === from && x.want_exchange === true);
+      const rev = ratings.find((x: { from_user_id: string; to_user_id: string; want_exchange?: boolean }) => x.from_user_id === to && x.to_user_id === from && x.want_exchange === true);
       if (!rev) continue;
       const pairKey = [from, to].sort().join(",");
       if (seen.has(pairKey)) continue;

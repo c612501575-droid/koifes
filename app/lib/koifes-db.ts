@@ -344,8 +344,14 @@ export async function addRating(rating: KoifesRating): Promise<void> {
   console.log("[koifes-db] addRating payload:", payload);
   const { error } = await supabase.from("koifes_ratings").insert(payload);
   if (error) {
-    console.error("Supabase insert error:", JSON.stringify(error));
-    console.error("[koifes-db] addRating failed:", error.message, error.details, { payload });
+    console.error("[koifes-db] addRating failed:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      full: JSON.stringify(error),
+      payload,
+    });
     throw error;
   }
 }

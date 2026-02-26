@@ -723,7 +723,7 @@ function HistoryExchangeSection({
 
   const saveExchange = async (want: boolean) => {
     setSaving(true);
-    const finalReasons = !want && reasons.includes("その他")
+    const finalReasons = reasons.includes("その他")
       ? [...reasons.filter((r) => r !== "その他"), "その他" + (reasonOther.trim() ? `: ${reasonOther.trim()}` : "")]
       : reasons;
     try {
@@ -739,7 +739,7 @@ function HistoryExchangeSection({
           again: "5",
           overall: 5,
           wantExchange: want,
-          exchangeReason: want && reasons.length > 0 ? reasons : undefined,
+          exchangeReason: want && finalReasons.length > 0 ? finalReasons : undefined,
           rejectReason: !want && finalReasons.length > 0 ? finalReasons : undefined,
           createdAt: new Date().toISOString(),
         });
@@ -794,14 +794,14 @@ function HistoryExchangeSection({
         >
           <p style={{ fontSize: 13, color: "#fff", marginBottom: 16 }}>理由を選んでください（複数可）</p>
           <ChipGroup options={options} value={reasons} onChange={(v) => setReasons(v as string[])} multi small />
-          {!popup && reasons.includes("その他") && (
+          {reasons.includes("その他") && (
             <div style={{ marginTop: 12 }}>
               <p style={{ fontSize: 11, color: "#999", marginBottom: 6 }}>その他の理由（自由記述）</p>
               <input
                 type="text"
                 value={reasonOther}
                 onChange={(e) => setReasonOther(e.target.value)}
-                placeholder="例：○○のため"
+                placeholder="理由を入力してください"
                 style={{
                   width: "100%",
                   padding: "10px 12px",
@@ -831,8 +831,8 @@ function HistoryExchangeSection({
       <button
         onClick={() => {
           const src = myRating?.wantExchange ? (myRating?.exchangeReason ?? []) : (myRating?.rejectReason ?? []);
-          const hasOther = src.some((r) => String(r).startsWith("その他:"));
-          const base = src.filter((r) => !String(r).startsWith("その他:"));
+          const hasOther = src.some((r) => r === "その他" || String(r).startsWith("その他:"));
+          const base = src.filter((r) => r !== "その他" && !String(r).startsWith("その他:"));
           setReasons(hasOther ? [...base, "その他"] : base);
           setReasonOther(src.find((r) => String(r).startsWith("その他:"))?.replace(/^その他:\s*/, "") ?? "");
           setPopup(myRating?.wantExchange ?? false);
@@ -1272,14 +1272,21 @@ function RateScreen({
   const [ease, setEase] = useState(existingRating?.ease ?? 5);
   const [status, setStatus] = useState(existingRating?.again ? Number(existingRating.again) || 5 : 5);
   const [wantExchange, setWantExchange] = useState<boolean | null>(existingRating?.wantExchange ?? null);
-  const [exchangeReasons, setExchangeReasons] = useState<string[]>(
-    existingRating?.wantExchange ? (existingRating?.exchangeReason ?? []) : []
+  const [exchangeReasons, setExchangeReasons] = useState<string[]>(() => {
+    if (!existingRating?.wantExchange) return [];
+    const arr = existingRating?.exchangeReason ?? [];
+    const hasOther = arr.some((r) => r === "その他" || String(r).startsWith("その他:"));
+    const base = arr.filter((r) => r !== "その他" && !String(r).startsWith("その他:"));
+    return hasOther ? [...base, "その他"] : base;
+  });
+  const [exchangeReasonOther, setExchangeReasonOther] = useState(
+    () => (existingRating?.exchangeReason ?? []).find((r) => String(r).startsWith("その他:"))?.replace(/^その他:\s*/, "") ?? ""
   );
   const [rejectReasons, setRejectReasons] = useState<string[]>(() => {
     if (!existingRating || existingRating.wantExchange !== false) return [];
     const arr = existingRating.rejectReason ?? [];
-    const hasOther = arr.some((r) => r.startsWith("その他"));
-    const base = arr.filter((r) => !r.startsWith("その他"));
+    const hasOther = arr.some((r) => r === "その他" || String(r).startsWith("その他:"));
+    const base = arr.filter((r) => r !== "その他" && !String(r).startsWith("その他:"));
     return hasOther ? [...base, "その他"] : base;
   });
   const [rejectReasonOther, setRejectReasonOther] = useState(
@@ -1376,6 +1383,12 @@ function RateScreen({
     try {
       const durationSeconds = Math.round((Date.now() - startTimeRef.current) / 1000);
       const ov = Math.round(((imp + ease + status) / 3) * 10) / 10;
+      const finalExchangeReasons = wantExchange
+        ? [
+            ...exchangeReasons.filter((r) => r !== "その他"),
+            ...(exchangeReasons.includes("その他") ? ["その他" + (exchangeReasonOther.trim() ? `: ${exchangeReasonOther.trim()}` : "")] : []),
+          ].filter(Boolean)
+        : undefined;
       const finalRejectReasons = !wantExchange
         ? [
             ...rejectReasons.filter((r) => r !== "その他"),
@@ -1388,8 +1401,8 @@ function RateScreen({
         again: String(status),
         overall: ov,
         wantExchange,
-        exchangeReason: wantExchange && exchangeReasons.length > 0 ? exchangeReasons : undefined,
-        rejectReason: !wantExchange && finalRejectReasons.length > 0 ? finalRejectReasons : undefined,
+        exchangeReason: wantExchange && finalExchangeReasons && finalExchangeReasons.length > 0 ? finalExchangeReasons : undefined,
+        rejectReason: !wantExchange && (finalRejectReasons?.length ?? 0) > 0 ? finalRejectReasons : undefined,
         partnerTags: partnerTags.length > 0 ? partnerTags : undefined,
         durationSeconds,
       };
@@ -1462,7 +1475,7 @@ function RateScreen({
           <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
             <button
               type="button"
-              onClick={() => { setWantExchange(true); setExchangeReasons([]); setRejectReasons([]); }}
+              onClick={() => { setWantExchange(true); setExchangeReasons([]); setExchangeReasonOther(""); setRejectReasons([]); setRejectReasonOther(""); }}
               style={{
                 flex: 1,
                 padding: "14px 16px",
@@ -1509,6 +1522,27 @@ function RateScreen({
                 multi
                 small
               />
+              {wantExchange && exchangeReasons.includes("その他") && (
+                <div style={{ marginTop: 12 }}>
+                  <p style={{ fontSize: 12, color: "#999", marginBottom: 8 }}>その他の理由（自由記述）</p>
+                  <input
+                    type="text"
+                    value={exchangeReasonOther}
+                    onChange={(e) => setExchangeReasonOther(e.target.value)}
+                    placeholder="理由を入力してください"
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      background: "rgba(255,255,255,0.06)",
+                      border: `1px solid ${faintLine}`,
+                      borderRadius: 8,
+                      color: "#fff",
+                      fontSize: 14,
+                      fontFamily: "'Noto Sans JP', sans-serif",
+                    }}
+                  />
+                </div>
+              )}
               {!wantExchange && rejectReasons.includes("その他") && (
                 <div style={{ marginTop: 12 }}>
                   <p style={{ fontSize: 12, color: "#999", marginBottom: 8 }}>その他の理由（自由記述）</p>
@@ -1516,7 +1550,7 @@ function RateScreen({
                     type="text"
                     value={rejectReasonOther}
                     onChange={(e) => setRejectReasonOther(e.target.value)}
-                    placeholder="例：○○のため"
+                    placeholder="理由を入力してください"
                     style={{
                       width: "100%",
                       padding: "12px 14px",
