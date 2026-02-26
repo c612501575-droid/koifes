@@ -16,8 +16,11 @@ export async function POST(request: Request) {
 
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key, process.env.SUPABASE_SERVICE_ROLE_KEY ? { auth: { persistSession: false } } : undefined);
-  const { data: rows } = await supabase.from("koifes_users").select("id, code");
-  const user = (rows || []).find((u: { code?: string }) => String(u.code || "").toUpperCase() === code);
+  const { data: user } = await supabase
+    .from("koifes_users")
+    .select("id, code")
+    .ilike("code", code)
+    .maybeSingle();
   if (!user) {
     return NextResponse.json({ ok: false, error: "コードが見つかりません" }, { status: 401 });
   }

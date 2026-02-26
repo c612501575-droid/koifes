@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { load, getKoifesUserByAuthId } from "@/app/lib/koifes-db";
+import { load, getKoifesUserByAuthId, updateRatingExchange } from "@/app/lib/koifes-db";
 import { supabase } from "@/app/lib/supabase";
 import { gold, faintLine2 } from "@/app/lib/koifes-constants";
 import {
@@ -14,11 +14,11 @@ import {
   Toast,
 } from "@/app/components/koifes/ui";
 
-const STEPS = 4;
+const STEPS = 6;
 
 export default function PostSurveyPage() {
   const router = useRouter();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -41,6 +41,9 @@ export default function PostSurveyPage() {
   const [lineDisplayName, setLineDisplayName] = useState("");
   const [feedbackText, setFeedbackText] = useState("");
   const [toast, setToast] = useState({ msg: "", show: false });
+  const [exchangeConfirmed, setExchangeConfirmed] = useState(false);
+  const [cancelledExchanges, setCancelledExchanges] = useState<Set<string>>(new Set());
+  const [cancellingToId, setCancellingToId] = useState<string | null>(null);
 
   const INTERESTED_COUNT_OPTIONS = ["0人", "1〜2人", "3〜5人", "6人以上"];
   const WANT_GROWTH_OPTIONS = ["とても思った", "少し思った", "あまり思わなかった", "全く思わなかった"];
@@ -51,6 +54,22 @@ export default function PostSurveyPage() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [step]);
+
+  type AppDb = {
+    users: { id: string; nickname?: string }[];
+    ratings: { id?: string; from: string; to: string; wantExchange?: boolean; impression?: number; ease?: number; again?: string; createdAt?: string }[];
+    connections: { from: string; to: string; createdAt?: string }[];
+  };
+
+  const [db, setDb] = useState<AppDb>({ users: [], ratings: [], connections: [] });
+
+  const applyLoadData = (data: { users?: AppDb["users"]; ratings?: AppDb["ratings"]; connections?: AppDb["connections"] }) => {
+    setDb({
+      users: data.users ?? [],
+      ratings: data.ratings ?? [],
+      connections: data.connections ?? [],
+    });
+  };
 
   useEffect(() => {
     (async () => {
@@ -68,6 +87,8 @@ export default function PostSurveyPage() {
       }
       try {
         setUserId(user.id);
+        const data = await load();
+        applyLoadData(data);
         setLoadError(false);
       } catch (err) {
         console.error("[post-survey] load failed:", err);
@@ -79,6 +100,7 @@ export default function PostSurveyPage() {
   }, [router]);
 
   const canNext = () => {
+    if (step === 0) return exchangeConfirmed;
     if (step === 1) return true;
     if (step === 2) return !!interestedCount && !!wantGrowth && !!resistanceChange;
     if (step === 3) return !!attendAgain && personalityTags.length > 0;
@@ -176,14 +198,119 @@ export default function PostSurveyPage() {
     );
   }
 
+  const wantExchangeRatingsRaw = db.ratings.filter((r) => r.from === userId && r.wantExchange === true && !cancelledExchanges.has(r.to));
+
+  const getConnectionTime = (peerId: string) => {
+    const c = (db.connections || []).find(
+      (conn) => (conn.from === userId && conn.to === peerId) || (conn.from === peerId && conn.to === userId)
+    );
+    return c?.createdAt || "";
+  };
+
+  const wantExchangeRatings = [...wantExchangeRatingsRaw].sort((a, b) => {
+    const scoreA = (a.impression ?? 0) + (a.ease ?? 0) + (Number(a.again) || 0);
+    const scoreB = (b.impression ?? 0) + (b.ease ?? 0) + (Number(b.again) || 0);
+    if (scoreB !== scoreA) return scoreB - scoreA;
+    const timeA = getConnectionTime(a.to) || a.createdAt || "";
+    const timeB = getConnectionTime(b.to) || b.createdAt || "";
+    return timeA.localeCompare(timeB);
+  });
+
   return (
     <div style={{ minHeight: "100vh", background: "#000", color: "#fff", paddingBottom: 100 }}>
-      <Header title="イベント後アンケート" onLeft={() => (step > 1 ? setStep(step - 1) : router.push("/app"))} />
+      <Header title="イベント後アンケート" onLeft={() => (step > 0 ? setStep(step - 1) : router.push("/app"))} />
       <div style={{ padding: "8px 24px 24px", maxWidth: 480, margin: "0 auto" }}>
-        <p style={{ fontSize: 12, letterSpacing: "0.3em", color: gold, marginBottom: 8 }}>STEP {step} / {STEPS}</p>
+        <p style={{ fontSize: 12, letterSpacing: "0.3em", color: gold, marginBottom: 8 }}>STEP {step + 1} / {STEPS}</p>
         <div style={{ height: 4, background: faintLine2, marginBottom: 32, borderRadius: 2 }}>
-          <div style={{ width: `${(step / STEPS) * 100}%`, height: "100%", background: gold, borderRadius: 2, transition: "width 0.4s" }} />
+          <div style={{ width: `${((step + 1) / STEPS) * 100}%`, height: "100%", background: gold, borderRadius: 2, transition: "width 0.4s" }} />
         </div>
+
+        {step === 0 && (
+          <div>
+            <h2 style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 20, fontWeight: 600, marginBottom: 8 }}>連絡先交換の確認</h2>
+            <p style={{ fontSize: 14, color: "#999", marginBottom: 24, lineHeight: 1.7 }}>
+              以下の方と連絡先を交換します。よろしいですか？
+            </p>
+            {wantExchangeRatings.length === 0 ? (
+              <div style={{ padding: 32, background: "rgba(255,255,255,0.03)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", marginBottom: 24 }}>
+                <p style={{ fontSize: 14, color: "#666" }}>交換希望の方はいません</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
+                {wantExchangeRatings.map((r) => {
+                  const peer = db.users.find((u) => u.id === r.to);
+                  if (!peer) return null;
+                  return (
+                    <div
+                      key={r.to}
+                      style={{
+                        padding: 20,
+                        background: "rgba(200,169,110,0.08)",
+                        border: "1px solid rgba(200,169,110,0.25)",
+                        borderRadius: 12,
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                        <span style={{ fontSize: 18, fontWeight: 600, color: "#fff" }}>{peer.nickname}</span>
+                        {!exchangeConfirmed && (
+                          <button
+                            type="button"
+                            disabled={cancellingToId === r.to}
+                            onClick={async () => {
+                              if (cancellingToId) return;
+                              const rating = db.ratings.find((x) => x.from === userId && x.to === r.to);
+                              setCancellingToId(r.to);
+                              setCancelledExchanges((prev) => new Set(prev).add(r.to));
+                              try {
+                                if (rating?.id) {
+                                  await updateRatingExchange(rating.id, false, []);
+                                }
+                                const data = await load();
+                                applyLoadData(data);
+                              } catch {
+                                setCancelledExchanges((prev) => {
+                                  const next = new Set(prev);
+                                  next.delete(r.to);
+                                  return next;
+                                });
+                                setToast({ msg: "通信エラーが発生しました。もう一度お試しください", show: true });
+                                setTimeout(() => setToast({ msg: "", show: false }), 3000);
+                              } finally {
+                                setCancellingToId(null);
+                              }
+                            }}
+                            style={{
+                              padding: "6px 12px",
+                              background: "transparent",
+                              border: "1px solid #555",
+                              color: cancellingToId === r.to ? "#555" : "#999",
+                              fontSize: 12,
+                              cursor: cancellingToId === r.to ? "not-allowed" : "pointer",
+                              borderRadius: 6,
+                            }}
+                          >
+                            {cancellingToId === r.to ? "処理中..." : "やっぱりやめる"}
+                          </button>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#999" }}>
+                        見た目 {r.impression ?? "-"}/10 · 話しやすさ {r.ease ?? "-"}/10 · ステータス {r.again ?? "-"}/10
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {!exchangeConfirmed && (
+              <BtnPrimary onClick={() => setExchangeConfirmed(true)}>
+                この内容で確定する
+              </BtnPrimary>
+            )}
+            {exchangeConfirmed && (
+              <p style={{ fontSize: 13, color: gold, marginBottom: 24 }}>✓ 確定しました。次へ進んでください。</p>
+            )}
+          </div>
+        )}
 
         {step === 1 && (
           <div>
@@ -231,6 +358,15 @@ export default function PostSurveyPage() {
                 }}
               />
             </div>
+          </div>
+        )}
+
+        {step === 5 && (
+          <div>
+            <h2 style={{ fontFamily: "'Noto Sans JP', sans-serif", fontSize: 20, fontWeight: 700, marginBottom: 24 }}>送信の確認</h2>
+            <p style={{ fontSize: 14, color: "#999", marginBottom: 24, lineHeight: 1.7 }}>
+              内容に問題なければ送信ボタンを押してください。
+            </p>
           </div>
         )}
 
@@ -375,8 +511,8 @@ export default function PostSurveyPage() {
         )}
 
         <div style={{ marginTop: 40 }}>
-          {step < STEPS ? (
-            <BtnPrimary onClick={() => setStep(step + 1)}>次へ</BtnPrimary>
+          {step < STEPS - 1 ? (
+            <BtnPrimary onClick={() => setStep(step + 1)} disabled={!canNext()}>次へ</BtnPrimary>
           ) : (
             <BtnPrimary onClick={handleSubmit} disabled={submitting}>{submitting ? "送信中..." : "送信する"}</BtnPrimary>
           )}

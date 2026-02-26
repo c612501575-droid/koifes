@@ -8,17 +8,22 @@ import {
   addRating,
   addConnection,
   updateUser,
+  updateRating,
+  updateRatingExchange,
   toggleFavorite,
+  getRatingByFromTo,
   type KoifesUser,
   type KoifesDb,
+  type KoifesRating,
 } from "@/app/lib/koifes-db";
-import { gold, faintLine, faintLine2, goldBorder, uid } from "@/app/lib/koifes-constants";
+import { gold, faintLine, faintLine2, goldBorder, uid, EXCHANGE_REASON_YES, EXCHANGE_REASON_NO } from "@/app/lib/koifes-constants";
 import { supabase } from "@/app/lib/supabase";
 import {
   Header,
   BottomNav,
   Toast,
   BtnPrimary,
+  BtnSecondary,
   ChipGroup,
   FormLabel,
   FormInput,
@@ -456,11 +461,13 @@ function AppPageContent() {
 
   // RateScreen
   if (screen === "rate" && target) {
+    const existingRating = db.ratings.find((r) => r.from === user.id && r.to === target.id);
     return (
       <>
         <RateScreen
           target={target}
           user={user}
+          existingRating={existingRating}
           onComplete={async () => {
             await refreshDb();
             setTarget(null);
@@ -488,9 +495,10 @@ function AppPageContent() {
       .map((c) => {
         const peerId = c.from === user.id ? c.to : c.from;
         const peer = db.users.find((u) => u.id === peerId);
-        return peer ? { peer, conn: c } : null;
+        const myRating = peer ? db.ratings.find((r) => r.from === user.id && r.to === peerId) : undefined;
+        return peer ? { peer, conn: c, myRating } : null;
       })
-      .filter(Boolean) as { peer: KoifesUser; conn: { createdAt?: string } }[];
+      .filter(Boolean) as { peer: KoifesUser | { id: string; nickname?: string; age?: string; job?: string }; conn: { createdAt?: string }; myRating?: KoifesRating }[];
     const visiblePeersWithConn = historyFavoritesOnly
       ? peersWithConn.filter((x) => getIsFav(x.peer.id))
       : peersWithConn;
@@ -524,11 +532,12 @@ function AppPageContent() {
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {visiblePeersWithConn.map(({ peer: p, conn }) => {
+              {visiblePeersWithConn.map(({ peer: p, conn, myRating }) => {
                 const isFav = getIsFav(p.id);
                 const connDate = conn.createdAt
                   ? new Date(conn.createdAt).toLocaleDateString("ja-JP", { month: "short", day: "numeric", year: "numeric" })
                   : null;
+                const exchangeAnswered = myRating && myRating.wantExchange !== undefined && myRating.wantExchange !== null;
                 return (
                   <div
                     key={p.id}
@@ -544,10 +553,30 @@ function AppPageContent() {
                     }}
                   >
                     <button
-                      onClick={() => {
-                        setTarget(p);
-                        setViewProfileFrom("history");
-                        setScreen("viewProfile");
+                      onClick={async () => {
+                        const hasFullProfile = "code" in p && "email" in p;
+                        if (hasFullProfile) {
+                          setTarget(p);
+                          setViewProfileFrom("history");
+                          setScreen("viewProfile");
+                          return;
+                        }
+                        try {
+                          const res = await fetch(`/api/user-profile/${encodeURIComponent(p.id)}`, {
+                            credentials: "include",
+                            cache: "no-store",
+                          });
+                          if (res.ok) {
+                            const { user: fullUser } = await res.json();
+                            setTarget(fullUser);
+                            setViewProfileFrom("history");
+                            setScreen("viewProfile");
+                          } else {
+                            showToast("プロフィールの取得に失敗しました", true);
+                          }
+                        } catch {
+                          showToast("プロフィールの取得に失敗しました", true);
+                        }
                       }}
                       style={{
                         flex: 1,
@@ -588,8 +617,20 @@ function AppPageContent() {
                         {connDate && (
                           <div style={{ fontSize: 11, color: "#666", letterSpacing: "0.05em" }}>{connDate}</div>
                         )}
+                        {exchangeAnswered && (
+                          <div style={{ fontSize: 10, color: myRating?.wantExchange ? gold : "#666", marginTop: 6 }}>
+                            {myRating?.wantExchange ? "交換希望 ✓" : "交換なし"}
+                          </div>
+                        )}
                       </div>
                     </button>
+                    <HistoryExchangeSection
+                      peer={p}
+                      user={user}
+                      myRating={myRating}
+                      refreshDb={refreshDb}
+                      showToast={showToast}
+                    />
                     <HistoryHeartButton
                       isFavorite={isFav}
                       onToggle={async (e) => {
@@ -659,6 +700,157 @@ function AppPageContent() {
   }
 
   return null;
+}
+
+function HistoryExchangeSection({
+  peer,
+  user,
+  myRating,
+  refreshDb,
+  showToast,
+}: {
+  peer: KoifesUser | { id: string; nickname?: string };
+  user: KoifesUser;
+  myRating?: KoifesRating;
+  refreshDb: () => Promise<KoifesDb>;
+  showToast: (msg: string, isError?: boolean) => void;
+}) {
+  const [popup, setPopup] = useState<boolean | null>(null);
+  const [reasons, setReasons] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const exchangeAnswered = myRating && myRating.wantExchange !== undefined && myRating.wantExchange !== null;
+
+  const saveExchange = async (want: boolean) => {
+    setSaving(true);
+    try {
+      if (myRating?.id) {
+        await updateRatingExchange(myRating.id, want, reasons);
+      } else {
+        await addRating({
+          id: uid(),
+          from: user.id,
+          to: peer.id,
+          impression: 5,
+          ease: 5,
+          again: "5",
+          overall: 5,
+          wantExchange: want,
+          exchangeReason: reasons.length > 0 ? reasons : undefined,
+          createdAt: new Date().toISOString(),
+        });
+        const exists = await load();
+        const connExists = exists.connections.find((c) => (c.from === user.id && c.to === peer.id) || (c.from === peer.id && c.to === user.id));
+        if (!connExists) {
+          await addConnection({
+            id: uid(),
+            from: user.id,
+            to: peer.id,
+            createdAt: new Date().toISOString(),
+          });
+        }
+      }
+      await refreshDb();
+      setPopup(null);
+      showToast("保存しました");
+    } catch {
+      showToast("保存に失敗しました", true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (popup !== null) {
+    const options = popup ? EXCHANGE_REASON_YES : EXCHANGE_REASON_NO;
+    return (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.85)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 100,
+          padding: 24,
+        }}
+        onClick={(e) => e.target === e.currentTarget && setPopup(null)}
+      >
+        <div
+          style={{
+            background: "#1a1a1a",
+            border: `1px solid ${gold}`,
+            borderRadius: 12,
+            padding: 24,
+            maxWidth: 320,
+            width: "100%",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <p style={{ fontSize: 13, color: "#fff", marginBottom: 16 }}>理由を選んでください（複数可）</p>
+          <ChipGroup options={options} value={reasons} onChange={(v) => setReasons(v as string[])} multi small />
+          <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
+            <BtnSecondary onClick={() => setPopup(null)}>キャンセル</BtnSecondary>
+            <BtnPrimary onClick={() => saveExchange(popup)} disabled={saving}>
+              {saving ? "保存中..." : "確定"}
+            </BtnPrimary>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (exchangeAnswered) {
+    return (
+      <button
+        onClick={() => {
+          setReasons(myRating?.exchangeReason ?? []);
+          setPopup(myRating?.wantExchange ?? false);
+        }}
+        style={{
+          background: "transparent",
+          border: "1px solid rgba(255,255,255,0.2)",
+          color: "#999",
+          fontSize: 10,
+          padding: "6px 10px",
+          cursor: "pointer",
+          flexShrink: 0,
+        }}
+      >
+        {myRating?.wantExchange ? "交換希望 ✓" : "交換なし"}
+      </button>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+      <button
+        onClick={() => setPopup(true)}
+        style={{
+          background: "transparent",
+          border: "1px solid rgba(200,169,110,0.4)",
+          color: gold,
+          fontSize: 11,
+          padding: "6px 12px",
+          cursor: "pointer",
+        }}
+      >
+        はい
+      </button>
+      <button
+        onClick={() => setPopup(false)}
+        style={{
+          background: "transparent",
+          border: "1px solid rgba(255,255,255,0.2)",
+          color: "#999",
+          fontSize: 11,
+          padding: "6px 12px",
+          cursor: "pointer",
+        }}
+      >
+        いいえ
+      </button>
+    </div>
+  );
 }
 
 function HistoryHeartButton({
@@ -845,20 +1037,26 @@ function ScanScreen({
       resolvingRef.current = true;
       console.log("[ScanScreen] 解析したコード:", codeStr, "元データ:", raw.slice(0, 80));
       try {
-        const data = await load();
-        const found = data.users.find((u) => (u.code || "").toUpperCase() === codeStr && u.id !== user.id);
-        if (found) {
-          if (scannerRef.current) {
-            try {
-              await scannerRef.current.stop();
-            } catch (e) {
-              console.warn("[QR] スキャナー停止時のエラー（無視可）:", e);
+        const res = await fetch(`/api/lookup-by-code?code=${encodeURIComponent(codeStr)}`, {
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (res.ok) {
+          const { user: found } = await res.json();
+          if (found && found.id !== user.id) {
+            if (scannerRef.current) {
+              try {
+                await scannerRef.current.stop();
+              } catch (e) {
+                console.warn("[QR] スキャナー停止時のエラー（無視可）:", e);
+              }
             }
+            onFound(found);
+          } else {
+            setError("自分自身のコードです");
+            onToast("自分自身のコードです", true);
           }
-          onFound(found);
         } else {
-          const codes = data.users.map((u) => (u.code || "").toUpperCase()).filter(Boolean);
-          console.warn("[ScanScreen] ユーザー未検出 code:", codeStr, "users:", data.users.length, "codes:", codes.slice(0, 10));
           setError("該当するユーザーが見つかりません");
           onToast("該当するユーザーが見つかりません", true);
         }
@@ -1027,19 +1225,23 @@ function ScanScreen({
 function RateScreen({
   target,
   user,
+  existingRating,
   onComplete,
   onBack,
   onToast,
 }: {
   target: KoifesUser;
   user: KoifesUser;
+  existingRating?: KoifesRating | undefined;
   onComplete: () => void;
   onBack: () => void;
   onToast: (msg: string, isError?: boolean) => void;
 }) {
-  const [imp, setImp] = useState(5);
-  const [ease, setEase] = useState(5);
-  const [status, setStatus] = useState(5);
+  const [imp, setImp] = useState(existingRating?.impression ?? 5);
+  const [ease, setEase] = useState(existingRating?.ease ?? 5);
+  const [status, setStatus] = useState(existingRating?.again ? Number(existingRating.again) || 5 : 5);
+  const [wantExchange, setWantExchange] = useState<boolean | null>(existingRating?.wantExchange ?? null);
+  const [exchangeReasons, setExchangeReasons] = useState<string[]>(existingRating?.exchangeReason ?? []);
   const [done, setDone] = useState(false);
   const [sub, setSub] = useState(false);
 
@@ -1121,20 +1323,38 @@ function RateScreen({
 
   const submit = async () => {
     if (!imp || !ease || !status) return;
+    if (wantExchange === null) {
+      onToast("連絡先交換の希望を選択してください", true);
+      return;
+    }
     setSub(true);
     try {
-      console.log("Saving rating:", { impression: imp, ease, status });
+      console.log("Saving rating:", { impression: imp, ease, status, wantExchange, exchangeReasons });
       const ov = Math.round(((imp + ease + status) / 3) * 10) / 10;
-      await addRating({
-        id: uid(),
-        from: user.id,
-        to: target.id,
-        impression: imp,
-        ease,
-        again: String(status),
-        overall: ov,
-        createdAt: new Date().toISOString(),
-      });
+      if (existingRating?.id) {
+        await updateRating({
+          ...existingRating,
+          impression: imp,
+          ease,
+          again: String(status),
+          overall: ov,
+          wantExchange,
+          exchangeReason: exchangeReasons.length > 0 ? exchangeReasons : undefined,
+        });
+      } else {
+        await addRating({
+          id: uid(),
+          from: user.id,
+          to: target.id,
+          impression: imp,
+          ease,
+          again: String(status),
+          overall: ov,
+          wantExchange,
+          exchangeReason: exchangeReasons.length > 0 ? exchangeReasons : undefined,
+          createdAt: new Date().toISOString(),
+        });
+      }
       const exists = await load();
       const connExists = exists.connections.find((c) => (c.from === user.id && c.to === target.id) || (c.from === target.id && c.to === user.id));
       if (!connExists) {
@@ -1187,9 +1407,65 @@ function RateScreen({
         <RateSlider label="見た目" value={imp} onChange={setImp} leftText="低い" rightText="高い" min={1} max={10} />
         <RateSlider label="話しやすさ" value={ease} onChange={setEase} leftText="話しにくい" rightText="話しやすい" min={1} max={10} />
         <RateSlider label="ステータス" note="（職業・年収・社会的立場の印象）" value={status} onChange={setStatus} leftText="低い" rightText="高い" min={1} max={10} />
+
+        <div style={{ marginTop: 32, paddingTop: 24, borderTop: `1px solid ${faintLine}` }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: "#fff", marginBottom: 16 }}>連絡先を交換したいですか？</p>
+          <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+            <button
+              type="button"
+              onClick={() => { setWantExchange(true); setExchangeReasons([]); }}
+              style={{
+                flex: 1,
+                padding: "14px 16px",
+                background: wantExchange === true ? "rgba(200,169,110,0.25)" : "transparent",
+                border: wantExchange === true ? `2px solid ${gold}` : "1px solid rgba(255,255,255,0.2)",
+                color: wantExchange === true ? gold : "#999",
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: "pointer",
+                fontFamily: "'Noto Sans JP', sans-serif",
+                borderRadius: 8,
+              }}
+            >
+              はい
+            </button>
+            <button
+              type="button"
+              onClick={() => { setWantExchange(false); setExchangeReasons([]); }}
+              style={{
+                flex: 1,
+                padding: "14px 16px",
+                background: wantExchange === false ? "rgba(200,169,110,0.25)" : "transparent",
+                border: wantExchange === false ? `2px solid ${gold}` : "1px solid rgba(255,255,255,0.2)",
+                color: wantExchange === false ? gold : "#999",
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: "pointer",
+                fontFamily: "'Noto Sans JP', sans-serif",
+                borderRadius: 8,
+              }}
+            >
+              いいえ
+            </button>
+          </div>
+          {wantExchange !== null && (
+            <div style={{ animation: "fadeIn 0.3s ease" }}>
+              <p style={{ fontSize: 12, color: "#999", marginBottom: 12 }}>
+                {wantExchange ? "理由を選んでください（複数可）" : "理由を選んでください（複数可）"}
+              </p>
+              <ChipGroup
+                options={wantExchange ? EXCHANGE_REASON_YES : EXCHANGE_REASON_NO}
+                value={exchangeReasons}
+                onChange={(v) => setExchangeReasons(v as string[])}
+                multi
+                small
+              />
+            </div>
+          )}
+        </div>
       </div>
       <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(to top, #000 60%, transparent)", padding: "32px 24px 36px" }}>
-        <BtnPrimary onClick={submit} disabled={sub || !imp || !ease || !status}>{sub ? "保存中..." : "保存する"}</BtnPrimary>
+        <BtnPrimary onClick={submit} disabled={sub || !imp || !ease || !status || wantExchange === null}>{sub ? "保存中..." : "保存する"}</BtnPrimary>
       </div>
     </div>
   );

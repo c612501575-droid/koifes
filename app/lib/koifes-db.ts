@@ -49,6 +49,8 @@ export type KoifesRating = {
   ease: number;
   again?: string;
   overall: number;
+  wantExchange?: boolean;
+  exchangeReason?: string[];
   createdAt: string;
 };
 
@@ -65,8 +67,11 @@ export type KoifesFavorite = {
   favoriteUserId: string;
 };
 
+/** 他ユーザー向けの最小限の情報（APIで返す） */
+export type PublicUser = { id: string; nickname?: string; age?: string; job?: string };
+
 export type KoifesDb = {
-  users: KoifesUser[];
+  users: (KoifesUser | PublicUser)[];
   ratings: KoifesRating[];
   connections: KoifesConnection[];
   favorites: KoifesFavorite[];
@@ -118,6 +123,7 @@ function toDbUser(row: Record<string, unknown>): KoifesUser {
 function toDbRating(row: Record<string, unknown>): KoifesRating {
   const from = (row.from_user_id ?? row.from_user ?? row.from) as string;
   const to = (row.to_user_id ?? row.to_user ?? row.to) as string;
+  const reasons = row.exchange_reason;
   return {
     id: row.id as string,
     from,
@@ -126,6 +132,8 @@ function toDbRating(row: Record<string, unknown>): KoifesRating {
     ease: row.ease as number,
     again: row.again as string,
     overall: Number(row.overall),
+    wantExchange: row.want_exchange as boolean | undefined,
+    exchangeReason: Array.isArray(reasons) ? (reasons as string[]) : undefined,
     createdAt: row.created_at as string,
   };
 }
@@ -188,7 +196,36 @@ function toRowUser(u: KoifesUser): Record<string, unknown> {
   };
 }
 
+/**
+ * 認証済みユーザー向けの app データを API 経由で取得。
+ * 他ユーザーは最小限の情報（id, nickname, age, job）のみ返る。
+ */
 export async function load(): Promise<KoifesDb> {
+  try {
+    const res = await fetch("/api/app-data", { credentials: "include", cache: "no-store" });
+    if (!res.ok) {
+      if (res.status === 401) {
+        return { users: [], ratings: [], connections: [], favorites: [] };
+      }
+      throw new Error(`load failed: ${res.status}`);
+    }
+    const data = await res.json();
+    return {
+      users: data.users || [],
+      ratings: data.ratings || [],
+      connections: data.connections || [],
+      favorites: data.favorites || [],
+    };
+  } catch (err) {
+    console.error("[koifes-db] load failed:", err);
+    return { users: [], ratings: [], connections: [], favorites: [] };
+  }
+}
+
+/**
+ * @deprecated セキュリティのため load() を API 経由に変更済み。互換用に残す。
+ */
+export async function loadDirect(): Promise<KoifesDb> {
   try {
     const [usersRes, ratingsRes, connectionsRes, favoritesRes] = await Promise.all([
       supabase.from("koifes_users").select("*"),
@@ -197,33 +234,9 @@ export async function load(): Promise<KoifesDb> {
       supabase.from("koifes_favorites").select("*"),
     ]);
 
-    if (usersRes.error) {
-      console.error("[koifes-db] load users failed:", usersRes.error.message, usersRes.error.details, usersRes.error);
-    }
-    if (ratingsRes.error) {
-      console.error("[koifes-db] load ratings failed:", ratingsRes.error.message, ratingsRes.error.details);
-    }
-    if (connectionsRes.error) {
-      console.error("[koifes-db] load connections failed:", connectionsRes.error.message, connectionsRes.error.details);
-    }
-    if (favoritesRes.error) {
-      console.error("[koifes-db] load favorites failed:", favoritesRes.error.message, favoritesRes.error.details);
-    }
-
-    const rawConnections = connectionsRes.data || [];
-    if (rawConnections.length > 0) {
-      const sample = rawConnections[0] as Record<string, unknown>;
-      console.log("[koifes-db] koifes_connections:", rawConnections.length, "件, カラム:", Object.keys(sample));
-    } else {
-      const hint = connectionsRes.error
-        ? `(エラー: ${connectionsRes.error.message})`
-        : "(0件: RLSポリシーが auth.uid() ベースの場合、未認証では取得不可)";
-      console.warn("[koifes-db] koifes_connections: 0件", hint);
-    }
-
-    const users = (usersRes.data || []).map(toDbUser);
-    const ratings = (ratingsRes.data || []).map(toDbRating);
-    const connections = rawConnections.map(toDbConnection);
+    const users = (usersRes.data || []).map((r) => toDbUser(r as Record<string, unknown>));
+    const ratings = (ratingsRes.data || []).map((r) => toDbRating(r as Record<string, unknown>));
+    const connections = (connectionsRes.data || []).map((r) => toDbConnection(r as Record<string, unknown>));
     const favorites = (favoritesRes.data || []).map((f: Record<string, unknown>) => ({
       id: f.id as string,
       userId: f.user_id as string,
@@ -232,7 +245,7 @@ export async function load(): Promise<KoifesDb> {
 
     return { users, ratings, connections, favorites };
   } catch (err) {
-    console.error("[koifes-db] load failed:", err);
+    console.error("[koifes-db] loadDirect failed:", err);
     return { users: [], ratings: [], connections: [], favorites: [] };
   }
 }
@@ -314,6 +327,8 @@ export async function addRating(rating: KoifesRating): Promise<void> {
     ease: rating.ease,
     again: rating.again != null ? String(rating.again) : null,
     overall: overallScore,
+    want_exchange: rating.wantExchange ?? null,
+    exchange_reason: (rating.exchangeReason && rating.exchangeReason.length > 0) ? rating.exchangeReason : null,
   };
   console.log("[koifes-db] addRating payload:", payload);
   const { error } = await supabase.from("koifes_ratings").insert(payload);
@@ -322,6 +337,53 @@ export async function addRating(rating: KoifesRating): Promise<void> {
     console.error("[koifes-db] addRating failed:", error.message, error.details, { payload });
     throw error;
   }
+}
+
+export async function updateRatingExchange(ratingId: string, wantExchange: boolean, exchangeReason: string[]): Promise<void> {
+  const { error } = await supabase
+    .from("koifes_ratings")
+    .update({
+      want_exchange: wantExchange,
+      exchange_reason: exchangeReason.length > 0 ? exchangeReason : null,
+    })
+    .eq("id", ratingId);
+  if (error) {
+    console.error("[koifes-db] updateRatingExchange failed:", error.message);
+    throw new Error(`更新に失敗しました: ${error.message}`);
+  }
+}
+
+export async function updateRating(rating: KoifesRating): Promise<void> {
+  const overallScore = Math.round(((rating.impression + rating.ease + (Number(rating.again) || 0)) / 3) * 10) / 10;
+  const { error } = await supabase
+    .from("koifes_ratings")
+    .update({
+      impression: rating.impression,
+      ease: rating.ease,
+      again: rating.again != null ? String(rating.again) : null,
+      overall: overallScore,
+      want_exchange: rating.wantExchange ?? null,
+      exchange_reason: (rating.exchangeReason && rating.exchangeReason.length > 0) ? rating.exchangeReason : null,
+    })
+    .eq("id", rating.id);
+  if (error) {
+    console.error("[koifes-db] updateRating failed:", error.message);
+    throw new Error(`更新に失敗しました: ${error.message}`);
+  }
+}
+
+/** from_user + to_user で既存の rating を取得 */
+export async function getRatingByFromTo(fromId: string, toId: string): Promise<KoifesRating | null> {
+  const { data, error } = await supabase
+    .from("koifes_ratings")
+    .select("*")
+    .eq("from_user_id", fromId)
+    .eq("to_user_id", toId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return null;
+  return toDbRating(data as Record<string, unknown>);
 }
 
 export async function addConnection(conn: KoifesConnection): Promise<void> {

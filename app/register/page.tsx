@@ -184,8 +184,10 @@ export default function RegisterPage() {
       if (!form.marriage || !form.children) return false;
       if (form.dealbreakers.length !== 3) return false;
       const marriageWants = ["強く望んでいる", "できればしたい"];
+      const marriageNoReasons = ["あまり考えていない", "結婚したくない"];
       const childrenWants = ["欲しい"];
       if (marriageWants.includes(form.marriage) && !form.marriageByWhen) return false;
+      if (marriageNoReasons.includes(form.marriage) && (!form.unmarriedReasons || form.unmarriedReasons.length === 0)) return false;
       if (childrenWants.includes(form.children) && !form.childrenByWhen) return false;
     }
     if (step === 3 && !form.selfImprovement) return false;
@@ -197,6 +199,7 @@ export default function RegisterPage() {
   };
 
   const handleComplete = async () => {
+    if (saving) return;
     setToast({ msg: "", show: false });
     setSaving(true);
     const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -205,9 +208,33 @@ export default function RegisterPage() {
       setSaving(false);
       return;
     }
+
+    let code = "";
+    const maxRetries = 5;
+    for (let i = 0; i < maxRetries; i++) {
+      const candidate = code4();
+      try {
+        const res = await fetch(`/api/check-code?code=${encodeURIComponent(candidate)}`, { cache: "no-store" });
+        const data = await res.json().catch(() => ({ taken: true }));
+        if (!data.taken) {
+          code = candidate;
+          break;
+        }
+      } catch {
+        code = candidate;
+        break;
+      }
+      if (i === maxRetries - 1) {
+        setToast({ msg: "コードの生成に失敗しました。しばらく待ってから再度お試しください", show: true });
+        setTimeout(() => setToast({ msg: "", show: false }), 3000);
+        setSaving(false);
+        return;
+      }
+    }
+
     const newUser: KoifesUser = {
       id: authUser.id,
-      code: code4(),
+      code: code || code4(),
       email: authUser.email ?? undefined,
       fullName: form.fullName,
       nickname: form.nickname,
@@ -256,12 +283,12 @@ export default function RegisterPage() {
         await new Promise((r) => setTimeout(r, 500));
       }
 
-      console.log("[register] 完了画面を3秒表示");
+      console.log("[register] 完了画面を5秒表示");
       setCompletedCode(newUser.code);
       setTimeout(() => {
         router.push("/app");
         router.refresh();
-      }, 3000);
+      }, 5000);
     } catch (err) {
       const message = err instanceof Error ? err.message : "保存に失敗しました。もう一度お試しください";
       setToast({ msg: message, show: true });
@@ -336,7 +363,7 @@ export default function RegisterPage() {
       )}
       {["あまり考えていない", "結婚したくない"].includes(form.marriage) && (
         <div style={{ marginBottom: 32 }}>
-          <FormLabel>結婚に至っていない理由は？（複数選択可）</FormLabel>
+          <FormLabel required>結婚に至っていない理由は？（複数選択可）</FormLabel>
           <ChipGroup options={UNMARRIED_REASONS} value={form.unmarriedReasons} onChange={(v) => set("unmarriedReasons", v as string[])} multi small />
         </div>
       )}
@@ -353,6 +380,7 @@ export default function RegisterPage() {
         value={form.dealbreakers}
         onChange={(v) => set("dealbreakers", v)}
         maxRank={3}
+        required
       />
     </div>,
     // Step 3
@@ -456,11 +484,33 @@ export default function RegisterPage() {
           style={{
             fontSize: 12,
             color: "#444",
+            marginBottom: 20,
             animation: "fadeIn 0.6s ease 1.5s both",
           }}
         >
-          まもなくアプリに移動します...
+          5秒後にアプリに移動します
         </p>
+        <button
+          onClick={() => {
+            router.push("/app");
+            router.refresh();
+          }}
+          style={{
+            width: "100%",
+            maxWidth: 280,
+            padding: 14,
+            background: "rgba(200,169,110,0.15)",
+            border: "1px solid rgba(200,169,110,0.4)",
+            color: "#c8a96e",
+            fontSize: 14,
+            fontWeight: 600,
+            letterSpacing: "0.15em",
+            cursor: "pointer",
+            fontFamily: "'Noto Sans JP', sans-serif",
+          }}
+        >
+          アプリに移動する
+        </button>
       </div>
     );
   }

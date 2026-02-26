@@ -34,7 +34,10 @@ export default function AdminLoginPage() {
     try {
       const { error: err } = await supabase.auth.signInWithOtp({
         email: trimmed,
-        options: { shouldCreateUser: true },
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+        },
       });
       if (err) {
         setError(err.message || "コードの送信に失敗しました");

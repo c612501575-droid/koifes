@@ -21,6 +21,9 @@ export const STAY_CONDITIONS = ["家賃補助", "若者コミュニティ", "出
 export const HOUSING_CONDS = ["広さ", "価格の安さ", "リノベ済み", "駅・学校の近さ", "実家との距離", "新築"];
 export const COMPANY_SUPPORT = ["かなり上がる", "少し上がる", "変わらない", "あまり関係ない"];
 
+export const EXCHANGE_REASON_YES = ["もっと話したい", "趣味が合いそう", "フィーリングが合った", "見た目がタイプ", "一緒にいて楽しかった", "その他"];
+export const EXCHANGE_REASON_NO = ["あまり話が合わなかった", "タイプではなかった", "緊張してうまく話せなかった", "もう少し時間が欲しかった", "特に理由はない", "その他"];
+
 export const gold = "#c8a96e";
 export const goldFade = "rgba(200,169,110,0.12)";
 export const goldBorder = "rgba(200,169,110,0.25)";

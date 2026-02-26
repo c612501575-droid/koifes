@@ -138,12 +138,14 @@ export function RankingSelector({
   value,
   onChange,
   maxRank = 3,
+  required,
 }: {
   title: string;
   options: string[];
   value: string[];
   onChange: (ranked: string[]) => void;
   maxRank?: number;
+  required?: boolean;
 }) {
   const ranked = value.slice(0, maxRank);
   const isSelected = (opt: string) => ranked.includes(opt);
@@ -170,7 +172,10 @@ export function RankingSelector({
 
   return (
     <div style={{ marginBottom: 32 }}>
-      <label style={{ display: "block", fontSize: 13, letterSpacing: "0.1em", color: "#999", marginBottom: 12 }}>{title}</label>
+      <label style={{ display: "block", fontSize: 13, letterSpacing: "0.1em", color: "#999", marginBottom: 12 }}>
+        {title}
+        {required && <span style={{ color: "#f87171", fontSize: "inherit" }}> *</span>}
+      </label>
 
       {/* ランキングエリア */}
       {ranked.length > 0 && (
@@ -307,7 +312,7 @@ export function FormLabel({
       }}
     >
       {children}
-      {required && <span style={{ color: gold, marginLeft: 4 }}>*</span>}
+      {required && <span style={{ color: "#f87171", fontSize: "inherit" }}> *</span>}
     </label>
   );
 }
